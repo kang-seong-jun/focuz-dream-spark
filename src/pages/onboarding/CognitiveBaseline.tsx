@@ -14,7 +14,7 @@ import { WorkingMemoryGame } from "@/components/games/WorkingMemoryGame";
 
 export default function CognitiveBaseline() {
   const navigate = useNavigate();
-  const { saveGameResult } = useGame();
+  const { saveGameResult, startGame } = useGame();
   const [gameState, setGameState] = useState<'intro' | 'playing' | 'complete'>('intro');
   const [currentGameIndex, setCurrentGameIndex] = useState(0);
   
@@ -23,6 +23,7 @@ export default function CognitiveBaseline() {
   const currentGame = gameOrder[currentGameIndex];
   
   const handleStartBaseline = () => {
+    startGame(currentGame); // Set the current game in context
     setGameState('playing');
   };
   
@@ -32,7 +33,10 @@ export default function CognitiveBaseline() {
     
     // Move to next game or complete
     if (currentGameIndex < gameOrder.length - 1) {
+      const nextGame = gameOrder[currentGameIndex + 1];
       setCurrentGameIndex(currentGameIndex + 1);
+      // Start the next game in the context
+      startGame(nextGame);
     } else {
       setGameState('complete');
     }
