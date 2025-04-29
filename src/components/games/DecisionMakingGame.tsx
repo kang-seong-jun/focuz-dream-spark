@@ -11,7 +11,6 @@ interface DecisionMakingGameProps {
 interface Trial {
   leftCount: number;
   rightCount: number;
-  difficulty: 'easy' | 'medium' | 'hard';
 }
 
 export function DecisionMakingGame({ onComplete, isBaseline = false }: DecisionMakingGameProps) {
@@ -27,54 +26,30 @@ export function DecisionMakingGame({ onComplete, isBaseline = false }: DecisionM
   const [trialNumber, setTrialNumber] = useState(0);
   const [correctResponses, setCorrectResponses] = useState(0);
   const [incorrectResponses, setIncorrectResponses] = useState(0);
-  const [responseTimesByDifficulty, setResponseTimesByDifficulty] = useState<{
-    easy: number[];
-    medium: number[];
-    hard: number[];
-  }>({ easy: [], medium: [], hard: [] });
+  const [responseTimes, setResponseTimes] = useState<number[]>([]);
   
   // Refs for timers
   const trialTimer = useRef<number | null>(null);
   const feedbackTimer = useRef<number | null>(null);
   
-  // Constants
-  const TOTAL_TRIALS = 30;
-  const TRIAL_TIMEOUT = 3000; // 3 seconds
-  const FEEDBACK_DURATION = 500; // 0.5 seconds
+  // Constants - reduced trials from 30 to 10
+  const TOTAL_TRIALS = 10;
+  const TRIAL_TIMEOUT = 5000; // 5 seconds (increased from 3)
+  const FEEDBACK_DURATION = 1000; // 1 second (increased from 0.5)
   
   // Generate dots positions for a given count
   const generateDots = useCallback((count: number) => {
-    // For simplicity, just return the count - in a real implementation,
-    // you would compute random x,y positions within the containing box
+    // For simplicity, just return the count
     return Array(count).fill(0);
   }, []);
   
-  // Generate a new trial
+  // Generate a new trial - simplified version
   const generateTrial = useCallback((): Trial => {
-    // Determine difficulty (random distribution)
-    const rand = Math.random();
-    let difficulty: 'easy' | 'medium' | 'hard';
-    
-    if (rand < 0.33) {
-      difficulty = 'easy'; // Big difference (3-5)
-    } else if (rand < 0.66) {
-      difficulty = 'medium'; // Medium difference (2)
-    } else {
-      difficulty = 'hard'; // Small difference (1)
-    }
-    
-    // Generate counts based on difficulty
-    let diff;
-    if (difficulty === 'easy') {
-      diff = Math.floor(Math.random() * 3) + 3; // 3-5
-    } else if (difficulty === 'medium') {
-      diff = 2;
-    } else {
-      diff = 1;
-    }
+    // Generate two different counts between 3 and 10
+    const baseCount = Math.floor(Math.random() * 4) + 3; // 3-6
+    const diff = Math.floor(Math.random() * 3) + 1; // 1-3
     
     // Randomly decide which side has more
-    const baseCount = Math.floor(Math.random() * 3) + 3; // 3-5
     let leftCount, rightCount;
     
     if (Math.random() < 0.5) {
@@ -85,7 +60,7 @@ export function DecisionMakingGame({ onComplete, isBaseline = false }: DecisionM
       rightCount = baseCount + diff;
     }
     
-    return { leftCount, rightCount, difficulty };
+    return { leftCount, rightCount };
   }, []);
   
   // Start the game
@@ -94,7 +69,7 @@ export function DecisionMakingGame({ onComplete, isBaseline = false }: DecisionM
     setTrialNumber(0);
     setCorrectResponses(0);
     setIncorrectResponses(0);
-    setResponseTimesByDifficulty({ easy: [], medium: [], hard: [] });
+    setResponseTimes([]);
     startNewTrial();
   };
   
@@ -140,12 +115,9 @@ export function DecisionMakingGame({ onComplete, isBaseline = false }: DecisionM
       setIncorrectResponses(prev => prev + 1);
     }
     
-    // Add response time to appropriate difficulty category
+    // Add response time to the array
     if (responseTime < TRIAL_TIMEOUT) {
-      setResponseTimesByDifficulty(prev => ({
-        ...prev,
-        [currentTrial.difficulty]: [...prev[currentTrial.difficulty], responseTime]
-      }));
+      setResponseTimes(prev => [...prev, responseTime]);
     }
     
     // Clear the trial timer
@@ -193,39 +165,16 @@ export function DecisionMakingGame({ onComplete, isBaseline = false }: DecisionM
     const totalTrials = correctResponses + incorrectResponses;
     const accuracy = totalTrials > 0 ? correctResponses / totalTrials : 0;
     
-    // Calculate mean RT for each difficulty level
-    const meanRTs = {
-      easy: responseTimesByDifficulty.easy.length > 0 
-        ? responseTimesByDifficulty.easy.reduce((sum, rt) => sum + rt, 0) / responseTimesByDifficulty.easy.length 
-        : 0,
-      medium: responseTimesByDifficulty.medium.length > 0 
-        ? responseTimesByDifficulty.medium.reduce((sum, rt) => sum + rt, 0) / responseTimesByDifficulty.medium.length 
-        : 0,
-      hard: responseTimesByDifficulty.hard.length > 0 
-        ? responseTimesByDifficulty.hard.reduce((sum, rt) => sum + rt, 0) / responseTimesByDifficulty.hard.length 
-        : 0
-    };
-    
-    // Calculate overall mean correct RT
-    let allCorrectRTs: number[] = [];
-    Object.values(responseTimesByDifficulty).forEach(rts => {
-      allCorrectRTs = allCorrectRTs.concat(rts);
-    });
-    
-    const meanCorrectRT = allCorrectRTs.length > 0 
-      ? allCorrectRTs.reduce((sum, rt) => sum + rt, 0) / allCorrectRTs.length 
+    // Calculate mean correct RT
+    const meanCorrectRT = responseTimes.length > 0 
+      ? responseTimes.reduce((sum, rt) => sum + rt, 0) / responseTimes.length 
       : 0;
-    
-    // Calculate inverse efficiency score (higher RT and lower accuracy means worse performance)
-    const inverseEfficiencyScore = accuracy > 0 ? meanCorrectRT / accuracy : 0;
     
     const score = calculateScore(accuracy, meanCorrectRT);
     
     const metrics = {
       decisionAccuracy: accuracy,
       meanCorrectRT,
-      inverseEfficiencyScore,
-      meanRTsByDifficulty: meanRTs,
       score,
     };
     
@@ -237,17 +186,13 @@ export function DecisionMakingGame({ onComplete, isBaseline = false }: DecisionM
     setIsPaused(prev => !prev);
   };
   
-  // Calculate score
+  // Calculate score - simplified scoring
   const calculateScore = (accuracy: number, meanRT: number) => {
     // Base score from accuracy (0-80 points)
     const accuracyScore = accuracy * 80;
     
     // RT score (0-20 points, faster is better)
-    // Normalize RT between 300ms (fastest expected) and 2000ms (slowest expected)
-    let rtScore = 0;
-    if (meanRT > 0) {
-      rtScore = Math.max(0, Math.min(20, 20 - ((meanRT - 300) / 1700) * 20));
-    }
+    const rtScore = Math.max(0, Math.min(20, 20 - ((meanRT - 500) / 2000) * 20));
     
     return Math.round(accuracyScore + rtScore);
   };
@@ -301,8 +246,8 @@ export function DecisionMakingGame({ onComplete, isBaseline = false }: DecisionM
       <CardContent className="pt-6 pb-4 min-h-[300px] flex flex-col items-center justify-center">
         {gameState === 'instruction' && (
           <div className="text-center space-y-4">
-            <p className="text-lg">좌우에 나타나는 두 상자 중 더 많은 점이 있는 쪽을 빠르게 선택하세요.</p>
-            <p>신속하고 정확하게 판단하는 것이 중요합니다!</p>
+            <p className="text-lg">좌우에 나타나는 두 상자 중 더 많은 점이 있는 쪽을 선택하세요.</p>
+            <p>10번의 문제가 제시됩니다. 신속하고 정확하게 판단해주세요!</p>
             <Button onClick={handleStart}>시작하기</Button>
           </div>
         )}

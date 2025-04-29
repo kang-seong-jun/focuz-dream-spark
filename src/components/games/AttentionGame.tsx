@@ -10,156 +10,182 @@ interface AttentionGameProps {
 
 export function AttentionGame({ onComplete, isBaseline = false }: AttentionGameProps) {
   // Game state
-  const [gameState, setGameState] = useState<'instruction' | 'playing' | 'finished'>('instruction');
-  const [currentLetter, setCurrentLetter] = useState<string | null>(null);
+  const [gameState, setGameState] = useState<'instruction' | 'playing' | 'feedback' | 'finished'>('instruction');
   const [isPaused, setIsPaused] = useState(false);
-  const [timeRemaining, setTimeRemaining] = useState(60); // 60 seconds = 1 minute
+  
+  // Current stimulus
+  const [currentLetter, setCurrentLetter] = useState<string>("");
+  const [stimulusStartTime, setStimulusStartTime] = useState<number | null>(null);
+  const [shouldRespond, setShouldRespond] = useState<boolean>(false);
   
   // Game metrics
-  const [totalTrials, setTotalTrials] = useState(0);
-  const [targetTrials, setTargetTrials] = useState(0);
-  const [responseTime, setResponseTime] = useState<number[]>([]);
-  const [omissionErrors, setOmissionErrors] = useState(0); // Missed non-X
-  const [commissionErrors, setCommissionErrors] = useState(0); // Responded to X
+  const [trialNumber, setTrialNumber] = useState(0);
+  const [correctResponses, setCorrectResponses] = useState(0);
+  const [incorrectResponses, setIncorrectResponses] = useState(0);
+  const [missedResponses, setMissedResponses] = useState(0);
+  const [responseTimes, setResponseTimes] = useState<number[]>([]);
   
-  // Refs for timers and game mechanics
-  const letterDisplayTimer = useRef<number | null>(null);
-  const gameTimer = useRef<number | null>(null);
-  const letterStartTime = useRef<number | null>(null);
-  const userCanRespond = useRef(true);
+  // Refs for timers
+  const stimulusTimer = useRef<number | null>(null);
+  const feedbackTimer = useRef<number | null>(null);
   
-  // Constants
-  const LETTER_DURATION = 500; // ms
-  const INTER_STIMULUS_INTERVAL = 500; // ms
-  const TARGET_LETTER = 'X';
-  const TARGET_PROBABILITY = 0.2; // 20% chance for target letter
-  const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWYZ'; // Excludes X
+  // Constants - reduced trials and increased times
+  const TOTAL_TRIALS = 10; // Changed from 30 to 10
+  const STIMULUS_DURATION = 1800; // 1.8 seconds - increased from 1.2s
+  const FEEDBACK_DURATION = 800; // 0.8 seconds - increased from 0.5s
+  const INTER_STIMULUS_INTERVAL = 1000; // 1 second between stimuli
+  
+  // Get random letter excluding X
+  const getRandomLetter = useCallback(() => {
+    const letters = "ABCDEFGHIJKLMNOPQRSTUVWYZ";
+    return letters[Math.floor(Math.random() * letters.length)];
+  }, []);
+  
+  // Generate a new stimulus
+  const generateStimulus = useCallback((): string => {
+    // X appears 20% of the time
+    if (Math.random() < 0.2) {
+      return "X";
+    } else {
+      return getRandomLetter();
+    }
+  }, [getRandomLetter]);
   
   // Start the game
   const handleStart = () => {
     setGameState('playing');
-    setTimeRemaining(60);
-    setTotalTrials(0);
-    setTargetTrials(0);
-    setResponseTime([]);
-    setOmissionErrors(0);
-    setCommissionErrors(0);
-    userCanRespond.current = true;
-    
-    // Start the game timer
-    gameTimer.current = window.setInterval(() => {
-      setTimeRemaining(prev => {
-        if (prev <= 1) {
-          finishGame();
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    
-    // Display first letter
-    displayNextLetter();
+    setTrialNumber(0);
+    setCorrectResponses(0);
+    setIncorrectResponses(0);
+    setMissedResponses(0);
+    setResponseTimes([]);
+    presentNextStimulus();
   };
   
-  // Display the next letter
-  const displayNextLetter = useCallback(() => {
-    // Clear current letter display timer
-    if (letterDisplayTimer.current) {
-      clearTimeout(letterDisplayTimer.current);
+  // Present next stimulus
+  const presentNextStimulus = useCallback(() => {
+    // Clear any existing timers
+    if (stimulusTimer.current) {
+      clearTimeout(stimulusTimer.current);
+    }
+    if (feedbackTimer.current) {
+      clearTimeout(feedbackTimer.current);
     }
     
-    // Determine if this is a target trial
-    const isTarget = Math.random() < TARGET_PROBABILITY;
-    
-    // Select the letter
-    const letter = isTarget 
-      ? TARGET_LETTER 
-      : ALPHABET[Math.floor(Math.random() * ALPHABET.length)];
-    
+    // Generate a new stimulus
+    const letter = generateStimulus();
     setCurrentLetter(letter);
-    setTotalTrials(prev => prev + 1);
-    if (isTarget) {
-      setTargetTrials(prev => prev + 1);
-    }
+    setStimulusStartTime(Date.now());
+    setShouldRespond(letter !== "X");
     
-    userCanRespond.current = true;
-    letterStartTime.current = Date.now();
-    
-    // Set timer to clear letter and show next one
-    letterDisplayTimer.current = window.setTimeout(() => {
-      // If no response was made for a non-target letter, count as omission error
-      if (userCanRespond.current && letter !== TARGET_LETTER) {
-        setOmissionErrors(prev => prev + 1);
+    // Set timeout for this stimulus
+    stimulusTimer.current = window.setTimeout(() => {
+      // If user should have responded but didn't, count as missed
+      if (letter !== "X") {
+        setMissedResponses(prev => prev + 1);
       }
-      
-      setCurrentLetter(null);
-      userCanRespond.current = false;
-      
-      // Set timer for next letter
-      letterDisplayTimer.current = window.setTimeout(() => {
-        if (gameState === 'playing' && !isPaused) {
-          displayNextLetter();
-        }
-      }, INTER_STIMULUS_INTERVAL);
-    }, LETTER_DURATION);
-  }, [gameState, isPaused]);
+      moveToNextTrial();
+    }, STIMULUS_DURATION);
+  }, [generateStimulus]);
   
   // Handle user response
   const handleResponse = () => {
-    if (!userCanRespond.current || !currentLetter) return;
+    if (gameState !== 'playing' || isPaused) return;
     
-    userCanRespond.current = false;
+    // Calculate response time
+    const responseTime = Date.now() - (stimulusStartTime || Date.now());
     
-    // If target letter, count as commission error
-    if (currentLetter === TARGET_LETTER) {
-      setCommissionErrors(prev => prev + 1);
-    } 
-    // If non-target letter, record response time
-    else {
-      const rt = Date.now() - (letterStartTime.current || Date.now());
-      setResponseTime(prev => [...prev, rt]);
+    // Clear the stimulus timer
+    if (stimulusTimer.current) {
+      clearTimeout(stimulusTimer.current);
+      stimulusTimer.current = null;
+    }
+    
+    // Determine if the response was correct
+    const isCorrect = shouldRespond;
+    
+    // Update metrics
+    if (isCorrect) {
+      setCorrectResponses(prev => prev + 1);
+      if (responseTime < STIMULUS_DURATION) {
+        setResponseTimes(prev => [...prev, responseTime]);
+      }
+    } else {
+      setIncorrectResponses(prev => prev + 1);
+    }
+    
+    // Show feedback
+    setGameState('feedback');
+    
+    // Set timeout for next trial
+    feedbackTimer.current = window.setTimeout(() => {
+      moveToNextTrial();
+    }, FEEDBACK_DURATION);
+  };
+  
+  // Move to next trial or finish game
+  const moveToNextTrial = () => {
+    setTrialNumber(prev => prev + 1);
+    
+    if (trialNumber >= TOTAL_TRIALS - 1) {
+      finishGame();
+    } else {
+      setGameState('playing');
+      // Add a delay before showing the next stimulus
+      setTimeout(() => {
+        presentNextStimulus();
+      }, INTER_STIMULUS_INTERVAL);
     }
   };
   
   // Finish the game
   const finishGame = () => {
-    // Clear all timers
-    if (gameTimer.current) {
-      clearInterval(gameTimer.current);
-      gameTimer.current = null;
+    // Clear any timers
+    if (stimulusTimer.current) {
+      clearTimeout(stimulusTimer.current);
     }
-    if (letterDisplayTimer.current) {
-      clearTimeout(letterDisplayTimer.current);
-      letterDisplayTimer.current = null;
+    if (feedbackTimer.current) {
+      clearTimeout(feedbackTimer.current);
     }
     
     setGameState('finished');
     
     // Calculate metrics
-    const nonTargetTrials = totalTrials - targetTrials;
-    const omissionErrorRate = nonTargetTrials > 0 ? omissionErrors / nonTargetTrials : 0;
-    const commissionErrorRate = targetTrials > 0 ? commissionErrors / targetTrials : 0;
-    const meanRT = responseTime.length > 0 
-      ? responseTime.reduce((sum, rt) => sum + rt, 0) / responseTime.length
+    const totalExpectedResponses = TOTAL_TRIALS * 0.8; // Expected 80% non-X stimuli
+    const sustainedAttentionAccuracy = totalExpectedResponses > 0 
+      ? correctResponses / totalExpectedResponses 
       : 0;
     
-    // Calculate overall sustained attention accuracy
-    const correctResponses = nonTargetTrials - omissionErrors;
-    const correctWithholding = targetTrials - commissionErrors;
-    const sustainedAttentionAccuracy = (correctResponses + correctWithholding) / totalTrials;
+    const meanReactionTime = responseTimes.length > 0
+      ? responseTimes.reduce((sum, rt) => sum + rt, 0) / responseTimes.length
+      : 0;
     
-    const score = calculateScore(sustainedAttentionAccuracy, omissionErrorRate, commissionErrorRate);
+    // Score calculation
+    const score = calculateScore(sustainedAttentionAccuracy, missedResponses, incorrectResponses);
     
     const metrics = {
       sustainedAttentionAccuracy,
-      omissionErrorRate,
-      commissionErrorRate,
-      meanRT,
-      totalTrials,
+      correctResponses,
+      missedResponses,
+      incorrectResponses,
+      meanReactionTime,
       score,
     };
     
     onComplete(metrics);
+  };
+  
+  // Calculate score
+  const calculateScore = (accuracy: number, misses: number, incorrects: number) => {
+    // Base score from accuracy (0-80 points)
+    const accuracyScore = accuracy * 80;
+    
+    // Penalties for misses and incorrect responses (0-20 points)
+    // The more misses and incorrect responses, the lower this part of the score
+    const totalTrials = TOTAL_TRIALS;
+    const errorPenalty = Math.max(0, 20 - ((misses + incorrects) / totalTrials) * 40);
+    
+    return Math.round(accuracyScore + errorPenalty);
   };
   
   // Toggle pause state
@@ -167,61 +193,46 @@ export function AttentionGame({ onComplete, isBaseline = false }: AttentionGameP
     setIsPaused(prev => !prev);
   };
   
-  // Calculate score
-  const calculateScore = (accuracy: number, omissionRate: number, commissionRate: number) => {
-    // Base score on accuracy (0-100)
-    const baseScore = accuracy * 100;
-    
-    // Penalties for errors
-    const omissionPenalty = omissionRate * 20;
-    const commissionPenalty = commissionRate * 30; // Higher penalty for commission errors
-    
-    return Math.max(0, Math.min(100, baseScore - omissionPenalty - commissionPenalty));
-  };
-  
   // Effects for pause/resume
   useEffect(() => {
     if (isPaused) {
       // Clear timers during pause
-      if (letterDisplayTimer.current) {
-        clearTimeout(letterDisplayTimer.current);
-        letterDisplayTimer.current = null;
+      if (stimulusTimer.current) {
+        clearTimeout(stimulusTimer.current);
+        stimulusTimer.current = null;
       }
-      if (gameTimer.current) {
-        clearInterval(gameTimer.current);
-        gameTimer.current = null;
+      if (feedbackTimer.current) {
+        clearTimeout(feedbackTimer.current);
+        feedbackTimer.current = null;
       }
-    } else if (gameState === 'playing') {
-      // Resume game timer
-      gameTimer.current = window.setInterval(() => {
-        setTimeRemaining(prev => {
-          if (prev <= 1) {
-            finishGame();
-            return 0;
+    } else if (gameState === 'playing' && currentLetter) {
+      // Resume stimulus timer
+      const remainingTime = STIMULUS_DURATION - (Date.now() - (stimulusStartTime || Date.now()));
+      if (remainingTime > 0) {
+        stimulusTimer.current = window.setTimeout(() => {
+          if (shouldRespond) {
+            setMissedResponses(prev => prev + 1);
           }
-          return prev - 1;
-        });
-      }, 1000);
-      
-      // Resume letter display
-      if (!currentLetter) {
-        displayNextLetter();
+          moveToNextTrial();
+        }, remainingTime);
+      } else {
+        moveToNextTrial();
       }
     }
-  }, [isPaused, gameState, currentLetter, displayNextLetter]);
+  }, [isPaused, gameState, currentLetter, stimulusStartTime, shouldRespond]);
   
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (letterDisplayTimer.current) clearTimeout(letterDisplayTimer.current);
-      if (gameTimer.current) clearInterval(gameTimer.current);
+      if (stimulusTimer.current) clearTimeout(stimulusTimer.current);
+      if (feedbackTimer.current) clearTimeout(feedbackTimer.current);
     };
   }, []);
-  
+
   return (
     <Card className="w-full max-w-md mx-auto bg-white/95 backdrop-blur-sm shadow-lg border-0">
       <CardHeader className="border-b pb-3">
-        <CardTitle className="text-center">X를 찾아라!</CardTitle>
+        <CardTitle className="text-center">X 찾아라!</CardTitle>
         <div className="absolute right-4 top-4">
           {gameState !== 'instruction' && gameState !== 'finished' && (
             <Button variant="outline" size="sm" onClick={togglePause}>
@@ -233,22 +244,32 @@ export function AttentionGame({ onComplete, isBaseline = false }: AttentionGameP
       <CardContent className="pt-6 pb-4 min-h-[300px] flex flex-col items-center justify-center">
         {gameState === 'instruction' && (
           <div className="text-center space-y-4">
-            <p className="text-lg">화면에 연속으로 문자가 나타납니다.</p>
-            <p><span className="font-bold">X를 제외한</span> 모든 문자에 클릭하고, X가 나타나면 클릭하지 마세요.</p>
+            <p className="text-lg">
+              다양한 알파벳이 화면에 나타납니다. <strong>X가 아닌 모든 글자</strong>에 대해 화면을 탭하세요.
+            </p>
+            <p>
+              X가 나타나면 탭하지 마세요! 10번의 문자가 제시됩니다.
+            </p>
             <Button onClick={handleStart}>시작하기</Button>
           </div>
         )}
 
-        {gameState === 'playing' && !isPaused && (
-          <div className="flex flex-col items-center justify-center h-60">
-            <div 
-              className="w-32 h-32 border rounded-md flex items-center justify-center cursor-pointer m-4"
-              onClick={handleResponse}
+        {(gameState === 'playing' || gameState === 'feedback') && !isPaused && (
+          <div className="flex flex-col items-center w-full" onClick={handleResponse}>
+            <div
+              className={`w-32 h-32 flex items-center justify-center rounded-md cursor-pointer ${
+                gameState === 'feedback'
+                  ? currentLetter === "X"
+                    ? "bg-green-100" // Correct no-response for X
+                    : "bg-green-500 text-white" // Correct response for non-X
+                  : "bg-gray-100"
+              }`}
             >
-              <span className="text-6xl font-bold">{currentLetter}</span>
+              <span className="text-7xl font-bold">{currentLetter}</span>
             </div>
-            <p className="mt-4 text-sm text-muted-foreground">
-              X가 아닌 문자만 클릭하세요
+            
+            <p className="mt-8 text-sm text-muted-foreground">
+              X 외의 모든 글자가 보이면 화면을 탭하세요
             </p>
           </div>
         )}
@@ -267,9 +288,9 @@ export function AttentionGame({ onComplete, isBaseline = false }: AttentionGameP
           </div>
         )}
         
-        {!isPaused && gameState === 'playing' && (
+        {!isPaused && (gameState === 'playing' || gameState === 'feedback') && (
           <div className="absolute top-4 left-4 p-2 bg-white/80 rounded text-sm">
-            남은시간: {timeRemaining}초
+            진행: {trialNumber + 1}/{TOTAL_TRIALS}
           </div>
         )}
       </CardContent>
