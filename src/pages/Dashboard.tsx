@@ -29,14 +29,14 @@ export default function Dashboard() {
 
   // Get user's performance data for hexagon chart
   const getCognitiveData = () => {
-    const gameTypes: GameType[] = ['WM', 'RT', 'ATT', 'PS', 'DM', 'EF'];
+    const gameTypes: GameType[] = ['WM', 'RT', 'ATT', 'PS', 'DM', 'WM2'];
     const gameResults: Record<GameType, number | null> = {
       'WM': null,
       'RT': null,
       'ATT': null, 
       'PS': null,
       'DM': null,
-      'EF': null
+      'WM2': null
     };
     
     // Try to get latest results for each game type

@@ -76,10 +76,7 @@ export const SleepProvider = ({ children }: { children: ReactNode }) => {
       id: Date.now().toString(),
       userId: user.id,
       timestamp: new Date().toISOString(),
-      q1Answer: answers[0],
-      q2Answer: answers[1],
-      q3Answer: answers[2],
-      q4Answer: answers[3],
+      answers: answers,
       calculatedSleepScore: calculateSleepScore(answers)
     };
 
