@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -267,7 +266,12 @@ export function ProcessingSpeedGame({ onComplete, isBaseline = false }: Processi
         {gameState === 'finished' && (
           <div className="text-center space-y-4">
             <h3 className="text-xl font-semibold">게임 완료!</h3>
-            <p>점수 계산 중...</p>
+            <p>결과</p>
+            <div className="mt-4 text-base space-y-1">
+              <div>맞춘 개수: <span className="font-semibold">{correctResponses}</span></div>
+              <div>정확도: <span className="font-semibold">{((correctResponses + incorrectResponses) > 0 ? (correctResponses / (correctResponses + incorrectResponses) * 100).toFixed(1) : 0)}%</span></div>
+              <div>평균 반응속도: <span className="font-semibold">{(responseTimestamps.length > 1 ? ((responseTimestamps[responseTimestamps.length-1] - responseTimestamps[0]) / (responseTimestamps.length-1)).toFixed(1) : 0)}ms</span></div>
+            </div>
           </div>
         )}
         
