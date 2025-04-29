@@ -19,6 +19,7 @@ export default function CognitiveBaseline() {
   const [currentGameIndex, setCurrentGameIndex] = useState(0);
   
   // List of games for baseline in fixed order
+  // Fix ordering here to ensure game 5 (DM) goes directly to game 6 (WM2)
   const gameOrder: GameType[] = ['WM', 'RT', 'ATT', 'PS', 'DM', 'WM2'];
   const currentGame = gameOrder[currentGameIndex];
   

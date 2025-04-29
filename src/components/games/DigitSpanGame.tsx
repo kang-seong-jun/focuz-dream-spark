@@ -38,13 +38,13 @@ export function DigitSpanGame({ onComplete, isBaseline = false }: DigitSpanGameP
 
   // Constants
   const MAX_TOTAL_ROUNDS = 3; // Total 3 rounds regardless of correctness
-  const NUMBER_DURATION = 700; // Faster number display (was 1000ms)
-  const PAUSE_DURATION = 300; // Shorter pause between numbers (was 500ms)
+  const NUMBER_DURATION = 600; // Even faster number display (was 700ms)
+  const PAUSE_DURATION = 250; // Shorter pause between numbers (was 300ms)
 
   // Start the game
   const startGame = () => {
     setGameState('playing');
-    setSequenceLength(7);
+    setSequenceLength(7); // Start with exactly 7 digits for round 1
     setCurrentSequence([]);
     setCorrectSequences([]);
     setInputSequence([]);
@@ -131,10 +131,15 @@ export function DigitSpanGame({ onComplete, isBaseline = false }: DigitSpanGameP
         finishGame();
       }, 1500);
     } else {
-      // Move to next length (7->8->9) after showing feedback
+      // Move to next length based on round number (7->8->9)
       setTimeout(() => {
         setShowFeedback(false);
-        setSequenceLength(prev => prev + 1); // Increase length for next round
+        // Set exact sequence length for each round
+        if (roundsCompleted === 0) {
+          setSequenceLength(8); // Round 2: 8 digits
+        } else if (roundsCompleted === 1) {
+          setSequenceLength(9); // Round 3: 9 digits
+        }
         generateSequence();
       }, 1500);
     }

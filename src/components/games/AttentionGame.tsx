@@ -10,7 +10,7 @@ interface AttentionGameProps {
 
 export function AttentionGame({ onComplete, isBaseline = false }: AttentionGameProps) {
   // Game state
-  const [gameState, setGameState] = useState<'instruction' | 'playing' | 'feedback' | 'finished'>('instruction');
+  const [gameState, setGameState] = useState<'instruction' | 'playing' | 'feedback' | 'waitingForNext' | 'finished'>('instruction');
   const [isPaused, setIsPaused] = useState(false);
   
   // Current stimulus
@@ -30,9 +30,9 @@ export function AttentionGame({ onComplete, isBaseline = false }: AttentionGameP
   const feedbackTimer = useRef<number | null>(null);
   
   // Constants - reduced trials and increased times
-  const TOTAL_TRIALS = 10; // Changed from 30 to 10
-  const STIMULUS_DURATION = 1800; // 1.8 seconds - increased from 1.2s
-  const FEEDBACK_DURATION = 800; // 0.8 seconds - increased from 0.5s
+  const TOTAL_TRIALS = 10;
+  const STIMULUS_DURATION = 1800; // 1.8 seconds
+  const FEEDBACK_DURATION = 800; // 0.8 seconds
   const INTER_STIMULUS_INTERVAL = 1000; // 1 second between stimuli
   
   // Get random letter excluding X
@@ -84,7 +84,8 @@ export function AttentionGame({ onComplete, isBaseline = false }: AttentionGameP
       if (letter !== "X") {
         setMissedResponses(prev => prev + 1);
       }
-      moveToNextTrial();
+      // Instead of automatically moving to next trial, wait for user to proceed
+      setGameState('waitingForNext');
     }, STIMULUS_DURATION);
   }, [generateStimulus]);
   
@@ -117,24 +118,21 @@ export function AttentionGame({ onComplete, isBaseline = false }: AttentionGameP
     // Show feedback
     setGameState('feedback');
     
-    // Set timeout for next trial
+    // Set timeout for feedback, then wait for user to proceed
     feedbackTimer.current = window.setTimeout(() => {
-      moveToNextTrial();
+      setGameState('waitingForNext');
     }, FEEDBACK_DURATION);
   };
   
-  // Move to next trial or finish game
-  const moveToNextTrial = () => {
+  // User manually moves to next trial
+  const handleNextTrial = () => {
     setTrialNumber(prev => prev + 1);
     
     if (trialNumber >= TOTAL_TRIALS - 1) {
       finishGame();
     } else {
       setGameState('playing');
-      // Add a delay before showing the next stimulus
-      setTimeout(() => {
-        presentNextStimulus();
-      }, INTER_STIMULUS_INTERVAL);
+      presentNextStimulus();
     }
   };
   
@@ -156,7 +154,7 @@ export function AttentionGame({ onComplete, isBaseline = false }: AttentionGameP
       ? correctResponses / totalExpectedResponses 
       : 0;
     
-    const meanReactionTime = responseTimes.length > 0
+    const meanRT = responseTimes.length > 0
       ? responseTimes.reduce((sum, rt) => sum + rt, 0) / responseTimes.length
       : 0;
     
@@ -168,7 +166,7 @@ export function AttentionGame({ onComplete, isBaseline = false }: AttentionGameP
       correctResponses,
       missedResponses,
       incorrectResponses,
-      meanReactionTime,
+      meanRT,
       score,
     };
     
@@ -213,10 +211,10 @@ export function AttentionGame({ onComplete, isBaseline = false }: AttentionGameP
           if (shouldRespond) {
             setMissedResponses(prev => prev + 1);
           }
-          moveToNextTrial();
+          setGameState('waitingForNext');
         }, remainingTime);
       } else {
-        moveToNextTrial();
+        setGameState('waitingForNext');
       }
     }
   }, [isPaused, gameState, currentLetter, stimulusStartTime, shouldRespond]);
@@ -274,6 +272,16 @@ export function AttentionGame({ onComplete, isBaseline = false }: AttentionGameP
           </div>
         )}
 
+        {gameState === 'waitingForNext' && !isPaused && (
+          <div className="flex flex-col items-center w-full">
+            <p className="mb-4">다음 시도를 진행하려면 버튼을 클릭하세요.</p>
+            <Button onClick={handleNextTrial}>다음 시도</Button>
+            <p className="mt-8 text-sm">
+              남은 시도: {TOTAL_TRIALS - trialNumber - 1}개
+            </p>
+          </div>
+        )}
+
         {isPaused && (
           <div className="text-center space-y-4">
             <p className="text-xl">게임이 일시 정지되었습니다</p>
@@ -288,7 +296,7 @@ export function AttentionGame({ onComplete, isBaseline = false }: AttentionGameP
           </div>
         )}
         
-        {!isPaused && (gameState === 'playing' || gameState === 'feedback') && (
+        {!isPaused && (gameState === 'playing' || gameState === 'feedback' || gameState === 'waitingForNext') && (
           <div className="absolute top-4 left-4 p-2 bg-white/80 rounded text-sm">
             진행: {trialNumber + 1}/{TOTAL_TRIALS}
           </div>

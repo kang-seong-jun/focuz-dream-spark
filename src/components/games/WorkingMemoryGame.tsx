@@ -10,7 +10,7 @@ interface WorkingMemoryGameProps {
 
 export function WorkingMemoryGame({ onComplete, isBaseline = false }: WorkingMemoryGameProps) {
   // Game state
-  const [gameState, setGameState] = useState<'instruction' | 'playing' | 'finished'>('instruction');
+  const [gameState, setGameState] = useState<'instruction' | 'playing' | 'waitingForNext' | 'finished'>('instruction');
   const [isPaused, setIsPaused] = useState(false);
   const [score, setScore] = useState(0);
   const [round, setRound] = useState(0);
@@ -18,6 +18,7 @@ export function WorkingMemoryGame({ onComplete, isBaseline = false }: WorkingMem
   const [playerPattern, setPlayerPattern] = useState<number[]>([]);
   const [isShowingPattern, setIsShowingPattern] = useState(false);
   const [currentPatternIndex, setCurrentPatternIndex] = useState(0);
+  const [patternCompleted, setPatternCompleted] = useState(false);
   
   // Game settings
   const MAX_ROUNDS = 10;
@@ -36,6 +37,7 @@ export function WorkingMemoryGame({ onComplete, isBaseline = false }: WorkingMem
     setGameState('playing');
     setScore(0);
     setRound(0);
+    setPatternCompleted(false);
     startNewRound();
   };
   
@@ -55,6 +57,7 @@ export function WorkingMemoryGame({ onComplete, isBaseline = false }: WorkingMem
     setPlayerPattern([]);
     setIsShowingPattern(true);
     setCurrentPatternIndex(0);
+    setPatternCompleted(false);
     
     // Start showing pattern sequence
     showPattern(newPattern);
@@ -97,7 +100,7 @@ export function WorkingMemoryGame({ onComplete, isBaseline = false }: WorkingMem
   
   // Handle player tile click
   const handleTileClick = (position: number) => {
-    if (isShowingPattern || isPaused || gameState !== 'playing') return;
+    if (isShowingPattern || isPaused || gameState !== 'playing' || patternCompleted) return;
     
     const newPlayerPattern = [...playerPattern, position];
     setPlayerPattern(newPlayerPattern);
@@ -113,19 +116,23 @@ export function WorkingMemoryGame({ onComplete, isBaseline = false }: WorkingMem
     if (newPlayerPattern.length === pattern.length) {
       // Pattern completed successfully - increase score
       setScore(prev => prev + pattern.length * 10);
+      setPatternCompleted(true);
       
       // Move to next round or finish game
       if (round >= MAX_ROUNDS - 1) {
         finishGame();
       } else {
-        setRound(prev => prev + 1);
-        
-        // Start next round after a short delay
-        setTimeout(() => {
-          startNewRound();
-        }, 1000);
+        // Wait for user to proceed to next round
+        setGameState('waitingForNext');
       }
     }
+  };
+
+  // Handle proceeding to next round (user initiated)
+  const handleNextRound = () => {
+    setRound(prev => prev + 1);
+    setGameState('playing');
+    startNewRound();
   };
   
   // Finish the game
@@ -229,9 +236,26 @@ export function WorkingMemoryGame({ onComplete, isBaseline = false }: WorkingMem
             
             <div className="mt-4">
               <p className="text-sm text-muted-foreground">
-                {isShowingPattern ? "패턴을 기억하세요..." : `${playerPattern.length}/${pattern.length} 선택됨`}
+                {isShowingPattern 
+                  ? "패턴을 기억하세요..."  
+                  : patternCompleted 
+                    ? "패턴 완성!" 
+                    : `${playerPattern.length}/${pattern.length} 선택됨`
+                }
               </p>
             </div>
+          </div>
+        )}
+
+        {gameState === 'waitingForNext' && !isPaused && (
+          <div className="text-center space-y-4">
+            <p className="text-lg">패턴을 성공적으로 완성했습니다!</p>
+            <p>
+              현재 점수: {score} | 라운드: {round + 1}/{MAX_ROUNDS}
+            </p>
+            <Button onClick={handleNextRound}>
+              다음 라운드로 진행
+            </Button>
           </div>
         )}
 
