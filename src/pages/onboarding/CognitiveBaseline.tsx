@@ -1,3 +1,4 @@
+import React from "react";
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -14,7 +15,7 @@ import { Card, CardContent } from "@/components/ui/card";
 export default function CognitiveBaseline() {
   const navigate = useNavigate();
   const { saveGameResult, startGame, getBaselineResults } = useGame();
-  const [gameState, setGameState] = useState<'intro' | 'playing' | 'complete'>('intro');
+  const [gameState, setGameState] = useState<'intro' | 'playing' | 'result' | 'complete'>('intro');
   const [currentGameIndex, setCurrentGameIndex] = useState(0);
   const [gameResults, setGameResults] = useState<Record<GameType, number | null>>({
     'RT': null,
@@ -24,6 +25,7 @@ export default function CognitiveBaseline() {
     'DM': null,
     'WM': null
   });
+  const [lastMetrics, setLastMetrics] = useState<Record<string, any> | null>(null);
   const processingGameComplete = useRef<boolean>(false);
   
   // List of games for baseline in fixed order - removed DM game
@@ -42,41 +44,23 @@ export default function CognitiveBaseline() {
   
   const handleGameComplete = (metrics: Record<string, any>) => {
     // Save game result as baseline
-    const savedResult = saveGameResult(metrics, true);
-    
-    // Update game results for display
+    saveGameResult(metrics, true);
     setGameResults(prev => ({
       ...prev,
       [currentGame]: getResultScore(currentGame, metrics)
     }));
-    
-    // Prevent multiple calls
-    if (processingGameComplete.current) return;
-    processingGameComplete.current = true;
-    
-    // Check if we need to move to the next game
+    setLastMetrics(metrics);
+    setGameState('result');
+  };
+
+  const handleNextGame = () => {
     if (currentGameIndex < gameOrder.length - 1) {
-      // Calculate next index
-      const nextIndex = currentGameIndex + 1;
-      
-      // Log for debugging
-      console.log(`Moving to next game: ${gameOrder[nextIndex]} (index: ${nextIndex})`);
-      
-      // Reset the processing flag after a short delay
-      setTimeout(() => {
-        processingGameComplete.current = false;
-        
-        // Update the state with the new index
-        setCurrentGameIndex(nextIndex);
-        
-        // Start the next game with the new index value
-        startGame(gameOrder[nextIndex]);
-      }, 300);
+      setCurrentGameIndex(currentGameIndex + 1);
+      setGameState('playing');
     } else {
-      // All games completed
       setGameState('complete');
-      processingGameComplete.current = false;
     }
+    setLastMetrics(null);
   };
 
   // Calculate a normalized score (0-100) for each game type based on metrics
@@ -138,26 +122,11 @@ export default function CognitiveBaseline() {
   const renderCurrentGame = () => {
     switch(currentGame) {
       case 'RT':
-        return (
-          <ReactionTimeGame 
-            onComplete={handleGameComplete} 
-            isBaseline={true} 
-          />
-        );
+        return <ReactionTimeGame onComplete={handleGameComplete} isBaseline={true} />;
       case 'PS':
-        return (
-          <ProcessingSpeedGame 
-            onComplete={handleGameComplete} 
-            isBaseline={true} 
-          />
-        );
+        return <ProcessingSpeedGame onComplete={handleGameComplete} isBaseline={true} />;
       case 'WM2':
-        return (
-          <WorkingMemoryGame 
-            onComplete={handleGameComplete} 
-            isBaseline={true} 
-          />
-        );
+        return <WorkingMemoryGame onComplete={handleGameComplete} isBaseline={true} />;
       default:
         return null;
     }
@@ -184,6 +153,41 @@ export default function CognitiveBaseline() {
   
   // Get user from game context
   const { user } = useAuth();
+  
+  // 각 게임 결과 요약
+  const renderResultSummary = () => {
+    if (!lastMetrics) return null;
+    const score = getResultScore(currentGame, lastMetrics);
+    return (
+      <div className="text-center space-y-4">
+        <h3 className="text-xl font-semibold">{GAME_TYPES[currentGame].fullName} 결과</h3>
+        <div className="text-3xl font-bold text-primary">{score}점</div>
+        <div className="mt-2 text-base">
+          {currentGame === 'RT' && (
+            <>
+              <div>평균 반응 시간: <span className="font-semibold">{Math.round(lastMetrics.averageReactionTime)}ms</span></div>
+            </>
+          )}
+          {currentGame === 'PS' && (
+            <>
+              <div>맞춘 개수: <span className="font-semibold">{lastMetrics.correctResponses}</span></div>
+              <div>정확도: <span className="font-semibold">{((lastMetrics.accuracy || 0) * 100).toFixed(1)}%</span></div>
+              <div>평균 반응속도: <span className="font-semibold">{(lastMetrics.timePerResponse || 0).toFixed(1)}ms</span></div>
+            </>
+          )}
+          {currentGame === 'WM2' && (
+            <>
+              <div>기억 패턴 길이: <span className="font-semibold">{lastMetrics.workingMemorySpan}</span></div>
+              <div>정확도: <span className="font-semibold">{((lastMetrics.accuracy || 0) * 100).toFixed(1)}%</span></div>
+            </>
+          )}
+        </div>
+        <Button className="w-full mt-4" size="lg" onClick={handleNextGame}>
+          {currentGameIndex < gameOrder.length - 1 ? '다음 게임으로' : '최종 결과 보기'}
+        </Button>
+      </div>
+    );
+  };
   
   return (
     <MainLayout withNavigation={false}>
@@ -220,16 +224,12 @@ export default function CognitiveBaseline() {
             </div>
             
             {renderCurrentGame()}
-            
-            <div className="mt-4 text-center">
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={handleSkipGame}
-              >
-                이 게임 건너뛰기
-              </Button>
-            </div>
+          </div>
+        )}
+        
+        {gameState === 'result' && (
+          <div className="w-full max-w-md">
+            {renderResultSummary()}
           </div>
         )}
         
@@ -257,6 +257,14 @@ export default function CognitiveBaseline() {
                   </CardContent>
                 </Card>
               ))}
+            </div>
+            
+            <div className="text-center mt-6">
+              <div className="text-lg font-semibold">평균 점수: <span className="text-primary">{
+                Math.round(
+                  gameOrder.reduce((sum, type) => sum + (gameResults[type] || 0), 0) / gameOrder.length
+                )
+              }점</span></div>
             </div>
             
             <p className="text-center">
