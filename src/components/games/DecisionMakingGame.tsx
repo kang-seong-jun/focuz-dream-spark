@@ -29,13 +29,11 @@ export function DecisionMakingGame({ onComplete, isBaseline = false }: DecisionM
   const [responseTimes, setResponseTimes] = useState<number[]>([]);
   
   // Refs for timers
-  const trialTimer = useRef<number | null>(null);
   const feedbackTimer = useRef<number | null>(null);
   
   // Constants - reduced trials from 30 to 10
   const TOTAL_TRIALS = 10;
-  const TRIAL_TIMEOUT = 5000; // 5 seconds (increased from 3)
-  const FEEDBACK_DURATION = 1000; // 1 second (increased from 0.5)
+  const FEEDBACK_DURATION = 200; // 0.2 seconds - changed from 1000ms
   
   // Generate dots positions for a given count
   const generateDots = useCallback((count: number) => {
@@ -76,24 +74,15 @@ export function DecisionMakingGame({ onComplete, isBaseline = false }: DecisionM
   // Start a new trial
   const startNewTrial = useCallback(() => {
     // Clear any existing timers
-    if (trialTimer.current) {
-      clearTimeout(trialTimer.current);
-    }
     if (feedbackTimer.current) {
       clearTimeout(feedbackTimer.current);
+      feedbackTimer.current = null;
     }
     
     // Generate a new trial
     const trial = generateTrial();
     setCurrentTrial(trial);
     setTrialStartTime(Date.now());
-    
-    // Set timeout for this trial
-    trialTimer.current = window.setTimeout(() => {
-      // If time runs out, count as incorrect
-      setIncorrectResponses(prev => prev + 1);
-      moveToNextTrial();
-    }, TRIAL_TIMEOUT);
   }, [generateTrial]);
   
   // Handle user choice (left or right)
@@ -116,20 +105,12 @@ export function DecisionMakingGame({ onComplete, isBaseline = false }: DecisionM
     }
     
     // Add response time to the array
-    if (responseTime < TRIAL_TIMEOUT) {
-      setResponseTimes(prev => [...prev, responseTime]);
-    }
-    
-    // Clear the trial timer
-    if (trialTimer.current) {
-      clearTimeout(trialTimer.current);
-      trialTimer.current = null;
-    }
+    setResponseTimes(prev => [...prev, responseTime]);
     
     // Show feedback
     setGameState('feedback');
     
-    // Set timeout for next trial
+    // Set timeout for next trial - only 0.2 seconds now
     feedbackTimer.current = window.setTimeout(() => {
       moveToNextTrial();
     }, FEEDBACK_DURATION);
@@ -150,10 +131,6 @@ export function DecisionMakingGame({ onComplete, isBaseline = false }: DecisionM
   // Finish the game
   const finishGame = () => {
     // Clear any timers
-    if (trialTimer.current) {
-      clearTimeout(trialTimer.current);
-      trialTimer.current = null;
-    }
     if (feedbackTimer.current) {
       clearTimeout(feedbackTimer.current);
       feedbackTimer.current = null;
@@ -199,34 +176,15 @@ export function DecisionMakingGame({ onComplete, isBaseline = false }: DecisionM
   
   // Effects for pause/resume
   useEffect(() => {
-    if (isPaused) {
-      // Clear timers during pause
-      if (trialTimer.current) {
-        clearTimeout(trialTimer.current);
-        trialTimer.current = null;
-      }
-      if (feedbackTimer.current) {
-        clearTimeout(feedbackTimer.current);
-        feedbackTimer.current = null;
-      }
-    } else if (gameState === 'playing' && currentTrial) {
-      // Resume trial timer
-      const remainingTime = TRIAL_TIMEOUT - (Date.now() - (trialStartTime || Date.now()));
-      if (remainingTime > 0) {
-        trialTimer.current = window.setTimeout(() => {
-          setIncorrectResponses(prev => prev + 1);
-          moveToNextTrial();
-        }, remainingTime);
-      } else {
-        moveToNextTrial();
-      }
+    if (!isPaused && gameState === 'playing' && !currentTrial) {
+      // If we're playing but don't have a current trial, start a new one
+      startNewTrial();
     }
-  }, [isPaused, gameState, currentTrial, trialStartTime]);
+  }, [isPaused, gameState, currentTrial, startNewTrial]);
   
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (trialTimer.current) clearTimeout(trialTimer.current);
       if (feedbackTimer.current) clearTimeout(feedbackTimer.current);
     };
   }, []);
