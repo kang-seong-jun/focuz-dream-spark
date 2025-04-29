@@ -131,14 +131,16 @@ export function DigitSpanGame({ onComplete, isBaseline = false }: DigitSpanGameP
         finishGame();
       }, 1500);
     } else {
-      // Move to next length based on round number (7->8->9)
+      // Move to next round with exact sequence length
       setTimeout(() => {
         setShowFeedback(false);
-        // Set exact sequence length for each round
+        // Explicitly set sequence length based on round number
         if (roundsCompleted === 0) {
-          setSequenceLength(8); // Round 2: 8 digits
+          // After completing round 1, set length to 8 for round 2
+          setSequenceLength(8);
         } else if (roundsCompleted === 1) {
-          setSequenceLength(9); // Round 3: 9 digits
+          // After completing round 2, set length to 9 for round 3
+          setSequenceLength(9);
         }
         generateSequence();
       }, 1500);
