@@ -63,19 +63,14 @@ export default function CognitiveBaseline() {
 
   // Calculate a normalized score (0-100) for each game type based on metrics
   const getResultScore = (gameType: GameType, metrics: Record<string, any>): number => {
-    if (typeof metrics.score === 'number' && !isNaN(metrics.score) && metrics.score !== null) {
-      return Math.max(0, Math.round(metrics.score));
-    }
     switch (gameType) {
       case 'RT': {
         const reactionTime = metrics.averageReactionTime || 1000;
         return Math.max(0, Math.min(100, 100 - ((reactionTime - 150) / 850) * 100));
       }
       case 'PS': {
-        // 맞춘 개수와 평균 반응속도를 모두 반영한 점수화
-        const correct = metrics.correctResponses || 0;
-        const avgSpeed = metrics.timePerResponse || 1000;
-        // 1000ms 이상이면 0점 패널티, 아니면 (맞춘개수*2)+(100-평균반응속도/10)
+        const correct = metrics.correctResponses ?? 0;
+        const avgSpeed = metrics.timePerResponse ?? 1000;
         let score = 0;
         if (avgSpeed >= 1000) {
           score = correct * 2;
@@ -145,14 +140,16 @@ export default function CognitiveBaseline() {
   const formatGameResult = (gameType: GameType): string => {
     const baselineResults = getBaselineResults(user?.id || '');
     const gameResult = baselineResults.find(r => r.gameType === gameType);
-    
     if (!gameResult) return '아직 측정되지 않음';
-    
     switch (gameType) {
       case 'RT':
         return `평균 반응 시간: ${Math.round(gameResult.metrics.averageReactionTime)}ms`;
-      case 'PS':
-        return `처리 항목: ${gameResult.metrics.itemsProcessed}개 (정확도: ${Math.round(gameResult.metrics.accuracy * 100)}%)`;
+      case 'PS': {
+        const correct = gameResult.metrics.correctResponses ?? 0;
+        const avgSpeed = gameResult.metrics.timePerResponse ?? 0;
+        const accuracy = gameResult.metrics.accuracy ?? 0;
+        return `맞춘 개수: ${correct}개, 평균 반응속도: ${avgSpeed.toFixed(1)}ms, 정확도: ${(accuracy * 100).toFixed(1)}%`;
+      }
       case 'WM2':
         return `기억력 점수: ${gameResult.metrics.score} (최대 패턴: ${gameResult.metrics.workingMemorySpan})`;
       default:
