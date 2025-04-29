@@ -14,19 +14,19 @@ export function DigitSpanGame({ onComplete, isBaseline = false }: DigitSpanGameP
   const [gameState, setGameState] = useState<'instruction' | 'showing' | 'input' | 'feedback' | 'finished'>('instruction');
   const [currentSequence, setCurrentSequence] = useState<number[]>([]);
   const [userInput, setUserInput] = useState<number[]>([]);
-  const [sequenceLength, setSequenceLength] = useState(3);
+  const [sequenceLength] = useState(7); // Fixed at 7 digits to make the game shorter
   const [currentDigitIndex, setCurrentDigitIndex] = useState(0);
   const [failuresAtCurrentLength, setFailuresAtCurrentLength] = useState(0);
   const [correctSequences, setCorrectSequences] = useState(0);
   const [totalAttempts, setTotalAttempts] = useState(0);
   const [startTime, setStartTime] = useState<number | null>(null);
   const [totalResponseTime, setTotalResponseTime] = useState(0);
-
+  const [digitKey, setDigitKey] = useState(0); // Key for animation triggering
+  
   const [isPaused, setIsPaused] = useState(false);
   
-  // For a real app, we might want to limit the maximum length or have a time limit
-  const MAX_SEQUENCE_LENGTH = 12;
-  const MAX_FAILURES_PER_LENGTH = 2;
+  // For a real app, we might want to have a limit for how many attempts
+  const MAX_FAILURES = 2;
 
   // Generate a random sequence of digits
   const generateSequence = useCallback((length: number): number[] => {
@@ -55,6 +55,9 @@ export function DigitSpanGame({ onComplete, isBaseline = false }: DigitSpanGameP
         return;
       }
 
+      // Show the current digit with animation
+      setDigitKey(prev => prev + 1);
+      
       // Show the current digit
       const timer = setTimeout(() => {
         setCurrentDigitIndex(prev => prev + 1);
@@ -98,23 +101,23 @@ export function DigitSpanGame({ onComplete, isBaseline = false }: DigitSpanGameP
         description: "다음 단계로 넘어갑니다.",
       });
       
-      // If they got it right, increase sequence length for next trial
-      setSequenceLength(prev => prev + 1);
+      // We're keeping sequence length constant, so just reset failures
       setFailuresAtCurrentLength(0);
       
-      // Start new trial after brief pause
-      setTimeout(() => {
-        if (sequenceLength >= MAX_SEQUENCE_LENGTH) {
-          finishGame();
-        } else {
+      // If they've done enough correct sequences (e.g., 3), finish the game
+      if (correctSequences >= 2) { // After 3 correct answers (this one is the 3rd)
+        finishGame();
+      } else {
+        // Start new trial after brief pause
+        setTimeout(() => {
           startNewTrial();
-        }
-      }, 1500);
+        }, 1500);
+      }
     } else {
       setGameState('feedback');
       toast({
         title: "틀렸습니다",
-        description: "같은 길이로 다시 시도합니다.",
+        description: "다시 시도합니다.",
         variant: "destructive",
       });
       
@@ -122,8 +125,8 @@ export function DigitSpanGame({ onComplete, isBaseline = false }: DigitSpanGameP
       const newFailures = failuresAtCurrentLength + 1;
       setFailuresAtCurrentLength(newFailures);
       
-      // If they've failed the maximum number of times at this length, finish the game
-      if (newFailures >= MAX_FAILURES_PER_LENGTH) {
+      // If they've failed the maximum number of times, finish the game
+      if (newFailures >= MAX_FAILURES) {
         finishGame();
       } else {
         // Otherwise try again with same length
@@ -139,7 +142,7 @@ export function DigitSpanGame({ onComplete, isBaseline = false }: DigitSpanGameP
     setGameState('finished');
     
     const metrics = {
-      memorySpan: sequenceLength - 1, // The longest sequence they successfully recalled
+      memorySpan: sequenceLength,
       correctSequences,
       totalAttempts,
       errorRate: totalAttempts > 0 ? 1 - (correctSequences / totalAttempts) : 0,
@@ -180,7 +183,7 @@ export function DigitSpanGame({ onComplete, isBaseline = false }: DigitSpanGameP
         {gameState === 'instruction' && (
           <div className="text-center space-y-4">
             <p className="text-lg">화면에 나타나는 숫자를 순서대로 기억한 다음, 숫자가 모두 사라진 후 기억한 순서대로 입력하세요.</p>
-            <p>현재 기억할 숫자 개수: {sequenceLength}개</p>
+            <p>기억할 숫자 개수: {sequenceLength}개</p>
             <Button onClick={handleStart}>시작하기</Button>
           </div>
         )}
@@ -189,8 +192,13 @@ export function DigitSpanGame({ onComplete, isBaseline = false }: DigitSpanGameP
           <div className="text-center space-y-4">
             <p className="text-sm text-muted-foreground">숫자를 기억하세요</p>
             {currentDigitIndex < currentSequence.length ? (
-              <div className="text-6xl font-bold animate-fade-in">
-                {currentSequence[currentDigitIndex]}
+              <div className="relative h-24 flex items-center justify-center">
+                <div 
+                  key={digitKey}
+                  className="text-6xl font-bold absolute transform transition-transform duration-300 animate-[slide-up_0.3s_ease-out]"
+                >
+                  {currentSequence[currentDigitIndex]}
+                </div>
               </div>
             ) : (
               <div className="text-xl">숫자를 입력할 준비를 하세요...</div>
