@@ -27,30 +27,31 @@ export function DigitSpanGame({ onComplete, isBaseline = false }: DigitSpanGameP
   const [isGenerating, setIsGenerating] = useState(false);
   const [numberChanged, setNumberChanged] = useState(false);
 
-  // Metrics
+  // Metrics and attempts
   const [totalAttempts, setTotalAttempts] = useState(0);
   const [correctAttempts, setCorrectAttempts] = useState(0);
   const [errorCount, setErrorCount] = useState(0);
+  const [roundsCompleted, setRoundsCompleted] = useState(0); // Track completed rounds
 
   // Refs
   const timerRef = useRef<number | null>(null);
 
   // Constants
-  const MAX_LENGTH = 9; // Max sequence length is 9
-  const MIN_LENGTH = 7; // Start with length 7
-  const NUMBER_DURATION = 1000; // ms
-  const PAUSE_DURATION = 500; // ms
+  const MAX_TOTAL_ROUNDS = 3; // Total 3 rounds regardless of correctness
+  const NUMBER_DURATION = 700; // Faster number display (was 1000ms)
+  const PAUSE_DURATION = 300; // Shorter pause between numbers (was 500ms)
 
   // Start the game
   const startGame = () => {
     setGameState('playing');
-    setSequenceLength(MIN_LENGTH);
+    setSequenceLength(7);
     setCurrentSequence([]);
     setCorrectSequences([]);
     setInputSequence([]);
     setTotalAttempts(0);
     setCorrectAttempts(0);
     setErrorCount(0);
+    setRoundsCompleted(0);
     generateSequence();
   };
 
@@ -78,7 +79,7 @@ export function DigitSpanGame({ onComplete, isBaseline = false }: DigitSpanGameP
       // Reset animation flag after a short delay
       setTimeout(() => {
         setNumberChanged(false);
-      }, 300);
+      }, 200);
       
       i++;
 
@@ -106,6 +107,7 @@ export function DigitSpanGame({ onComplete, isBaseline = false }: DigitSpanGameP
     if (isGenerating || isPaused) return;
 
     setTotalAttempts(prev => prev + 1);
+    setRoundsCompleted(prev => prev + 1);
 
     const isCorrect =
       inputSequence.length === currentSequence.length &&
@@ -115,34 +117,24 @@ export function DigitSpanGame({ onComplete, isBaseline = false }: DigitSpanGameP
       setCorrectAttempts(prev => prev + 1);
       setCorrectSequences([...correctSequences, currentSequence]);
       setFeedback("정답입니다!");
-      setShowFeedback(true);
-
-      // Increase difficulty if not at max length
-      if (sequenceLength < MAX_LENGTH) {
-        setSequenceLength(prev => prev + 1);
-        
-        // Generate next sequence after delay
-        setTimeout(() => {
-          setShowFeedback(false);
-          generateSequence();
-        }, 1500);
-      } else {
-        // Finish game if reached max length (9)
-        setTimeout(() => {
-          finishGame();
-        }, 1500);
-      }
     } else {
       setErrorCount(prev => prev + 1);
-      setFeedback("틀렸습니다. 다시 시도하세요.");
-      setShowFeedback(true);
+      setFeedback("틀렸습니다.");
+    }
+    
+    setShowFeedback(true);
 
-      // Reset input
-      setInputSequence([]);
-
-      // Generate same sequence after delay
+    // Check if we've completed all three rounds
+    if (roundsCompleted >= MAX_TOTAL_ROUNDS - 1) {
+      // End game after showing feedback
+      setTimeout(() => {
+        finishGame();
+      }, 1500);
+    } else {
+      // Move to next length (7->8->9) after showing feedback
       setTimeout(() => {
         setShowFeedback(false);
+        setSequenceLength(prev => prev + 1); // Increase length for next round
         generateSequence();
       }, 1500);
     }
@@ -159,7 +151,8 @@ export function DigitSpanGame({ onComplete, isBaseline = false }: DigitSpanGameP
     // Calculate metrics
     const accuracy = totalAttempts > 0 ? correctAttempts / totalAttempts : 0;
     const errorRate = errorCount / Math.max(1, totalAttempts);
-    const memorySpan = correctSequences.length > 0 ? correctSequences[correctSequences.length - 1].length : MIN_LENGTH;
+    const memorySpan = correctSequences.length > 0 ? 
+      correctSequences[correctSequences.length - 1].length : 7;
     const score = calculateScore(memorySpan, accuracy, errorCount);
 
     const metrics = {
@@ -233,7 +226,7 @@ export function DigitSpanGame({ onComplete, isBaseline = false }: DigitSpanGameP
                 {isGenerating ? "숫자 기억하기" : "숫자 입력하기"}
               </p>
               <p className="text-sm">
-                길이: {sequenceLength} | 시도: {totalAttempts} | 정답: {correctAttempts}
+                길이: {sequenceLength} | 라운드: {roundsCompleted + 1}/3
               </p>
             </div>
 
