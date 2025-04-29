@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { MainLayout } from "@/layouts/MainLayout";
@@ -19,9 +19,13 @@ export default function CognitiveBaseline() {
   const [currentGameIndex, setCurrentGameIndex] = useState(0);
   
   // List of games for baseline in fixed order
-  // Fix ordering here to ensure game 5 (DM) goes directly to game 6 (WM2)
   const gameOrder: GameType[] = ['WM', 'RT', 'ATT', 'PS', 'DM', 'WM2'];
   const currentGame = gameOrder[currentGameIndex];
+  
+  // Debug logs to track progression between games
+  useEffect(() => {
+    console.log(`Current game index: ${currentGameIndex}, Current game: ${currentGame}`);
+  }, [currentGameIndex, currentGame]);
   
   const handleStartBaseline = () => {
     startGame(currentGame); // Set the current game in context
@@ -34,8 +38,14 @@ export default function CognitiveBaseline() {
     
     // Move to next game or complete
     if (currentGameIndex < gameOrder.length - 1) {
-      const nextGame = gameOrder[currentGameIndex + 1];
-      setCurrentGameIndex(currentGameIndex + 1);
+      // First update the index
+      const nextIndex = currentGameIndex + 1;
+      setCurrentGameIndex(nextIndex);
+      
+      // Then start the next game using the updated index
+      const nextGame = gameOrder[nextIndex];
+      console.log(`Moving to next game: ${nextGame} (index: ${nextIndex})`);
+      
       // Start the next game in the context
       startGame(nextGame);
     } else {
