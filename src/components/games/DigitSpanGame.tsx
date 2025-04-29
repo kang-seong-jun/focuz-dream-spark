@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,13 +17,15 @@ export function DigitSpanGame({ onComplete, isBaseline = false }: DigitSpanGameP
   const [currentSequence, setCurrentSequence] = useState<number[]>([]);
   const [correctSequences, setCorrectSequences] = useState<number[][]>([]);
   const [inputSequence, setInputSequence] = useState<number[]>([]);
-  const [sequenceLength, setSequenceLength] = useState(3);
+  const [sequenceLength, setSequenceLength] = useState(7); // Start with 7
+  const [prevDisplayNumber, setPrevDisplayNumber] = useState<number | null>(null);
 
   // UI and timing
   const [displayNumber, setDisplayNumber] = useState<number | null>(null);
   const [feedback, setFeedback] = useState<string>("");
   const [showFeedback, setShowFeedback] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [numberChanged, setNumberChanged] = useState(false);
 
   // Metrics
   const [totalAttempts, setTotalAttempts] = useState(0);
@@ -33,8 +36,8 @@ export function DigitSpanGame({ onComplete, isBaseline = false }: DigitSpanGameP
   const timerRef = useRef<number | null>(null);
 
   // Constants
-  const MAX_LENGTH = 9;
-  const MIN_LENGTH = 3;
+  const MAX_LENGTH = 9; // Max sequence length is 9
+  const MIN_LENGTH = 7; // Start with length 7
   const NUMBER_DURATION = 1000; // ms
   const PAUSE_DURATION = 500; // ms
 
@@ -55,6 +58,7 @@ export function DigitSpanGame({ onComplete, isBaseline = false }: DigitSpanGameP
   const generateSequence = () => {
     setIsGenerating(true);
     setDisplayNumber(null);
+    setPrevDisplayNumber(null);
     setInputSequence([]);
     setFeedback("");
     setShowFeedback(false);
@@ -67,7 +71,15 @@ export function DigitSpanGame({ onComplete, isBaseline = false }: DigitSpanGameP
 
     let i = 0;
     timerRef.current = window.setInterval(() => {
+      setPrevDisplayNumber(displayNumber);
       setDisplayNumber(newSequence[i]);
+      setNumberChanged(true);
+      
+      // Reset animation flag after a short delay
+      setTimeout(() => {
+        setNumberChanged(false);
+      }, 300);
+      
       i++;
 
       if (i === newSequence.length) {
@@ -75,6 +87,7 @@ export function DigitSpanGame({ onComplete, isBaseline = false }: DigitSpanGameP
         timerRef.current = null;
         setTimeout(() => {
           setDisplayNumber(null);
+          setPrevDisplayNumber(null);
           setIsGenerating(false);
         }, PAUSE_DURATION);
       }
@@ -104,16 +117,21 @@ export function DigitSpanGame({ onComplete, isBaseline = false }: DigitSpanGameP
       setFeedback("정답입니다!");
       setShowFeedback(true);
 
-      // Increase difficulty
+      // Increase difficulty if not at max length
       if (sequenceLength < MAX_LENGTH) {
         setSequenceLength(prev => prev + 1);
+        
+        // Generate next sequence after delay
+        setTimeout(() => {
+          setShowFeedback(false);
+          generateSequence();
+        }, 1500);
+      } else {
+        // Finish game if reached max length (9)
+        setTimeout(() => {
+          finishGame();
+        }, 1500);
       }
-
-      // Generate next sequence after delay
-      setTimeout(() => {
-        setShowFeedback(false);
-        generateSequence();
-      }, 1500);
     } else {
       setErrorCount(prev => prev + 1);
       setFeedback("틀렸습니다. 다시 시도하세요.");
@@ -140,9 +158,9 @@ export function DigitSpanGame({ onComplete, isBaseline = false }: DigitSpanGameP
 
     // Calculate metrics
     const accuracy = totalAttempts > 0 ? correctAttempts / totalAttempts : 0;
-    const errorRate = 1 - accuracy;
+    const errorRate = errorCount / Math.max(1, totalAttempts);
     const memorySpan = correctSequences.length > 0 ? correctSequences[correctSequences.length - 1].length : MIN_LENGTH;
-    const score = calculateScore(memorySpan, accuracy, errorRate);
+    const score = calculateScore(memorySpan, accuracy, errorCount);
 
     const metrics = {
       memorySpan,
@@ -165,15 +183,15 @@ export function DigitSpanGame({ onComplete, isBaseline = false }: DigitSpanGameP
   };
 
   // Calculate score
-  const calculateScore = (memorySpan: number, accuracy: number, errorRate: number) => {
-    // Base score from memory span (0-70 points)
-    const spanScore = memorySpan * 7;
+  const calculateScore = (memorySpan: number, accuracy: number, errors: number) => {
+    // Base score from memory span (50-70 points)
+    const spanScore = Math.min(9, memorySpan) * 7;
 
     // Accuracy component (0-20 points)
     const accuracyScore = accuracy * 20;
 
-    // Error penalty (0-10 points)
-    const errorPenalty = errorRate * 10;
+    // Error penalty (0-15 points)
+    const errorPenalty = Math.min(15, errors * 5);
 
     return Math.round(spanScore + accuracyScore - errorPenalty);
   };
@@ -203,7 +221,7 @@ export function DigitSpanGame({ onComplete, isBaseline = false }: DigitSpanGameP
         {gameState === 'instruction' && (
           <div className="text-center space-y-4">
             <p className="text-lg">화면에 나타나는 숫자를 순서대로 기억하세요.</p>
-            <p>각 라운드마다 숫자가 점점 늘어납니다.</p>
+            <p>총 3개의 라운드를 진행하며, 7자리부터 시작합니다.</p>
             <Button onClick={startGame}>시작하기</Button>
           </div>
         )}
@@ -219,8 +237,15 @@ export function DigitSpanGame({ onComplete, isBaseline = false }: DigitSpanGameP
               </p>
             </div>
 
-            <div className="text-5xl font-bold">
-              {displayNumber !== null ? displayNumber : (isGenerating ? "..." : "")}
+            <div className="relative h-20 flex justify-center items-center">
+              {displayNumber !== null && (
+                <div className={`text-5xl font-bold absolute ${numberChanged ? 'animate-slide-up' : ''}`}>
+                  {displayNumber}
+                </div>
+              )}
+              {isGenerating && displayNumber === null && (
+                <div className="text-5xl font-bold">...</div>
+              )}
             </div>
 
             {showFeedback && (
