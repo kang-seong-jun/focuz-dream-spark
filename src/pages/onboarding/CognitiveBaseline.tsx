@@ -143,12 +143,12 @@ export default function CognitiveBaseline() {
     if (!gameResult) return '아직 측정되지 않음';
     switch (gameType) {
       case 'RT':
-        return `평균 반응 시간: ${Math.round(gameResult.metrics.averageReactionTime)}ms`;
+        return `평균 반응 시간: ${parseFloat(gameResult.metrics.averageReactionTime.toFixed(3))/1000}s`;
       case 'PS': {
         const correct = gameResult.metrics.correctResponses ?? 0;
         const avgSpeed = gameResult.metrics.timePerResponse ?? 0;
         const accuracy = gameResult.metrics.accuracy ?? 0;
-        return `맞춘 개수: ${correct}개, 평균 반응속도: ${avgSpeed.toFixed(1)}ms, 정확도: ${(accuracy * 100).toFixed(1)}%`;
+        return `맞춘 개수: ${correct}개, 평균 반응속도: ${parseFloat(avgSpeed.toFixed(1)) / 1000}s, 정확도: ${(accuracy * 100).toFixed(1)}%`;
       }
       case 'WM2':
         return `기억력 점수: ${gameResult.metrics.score} (최대 패턴: ${gameResult.metrics.workingMemorySpan})`;
@@ -171,13 +171,18 @@ export default function CognitiveBaseline() {
         <div className="mt-2 text-base">
           {currentGame === 'RT' && (
             <>
-              <div>평균 반응 시간: <span className="font-semibold">{Math.round(lastMetrics.averageReactionTime)}ms</span></div>
+              <div>평균 반응 시간: <span className="font-semibold">{parseFloat(lastMetrics.averageReactionTime.toFixed(1))/1000}s</span></div>
             </>
           )}
           {currentGame === 'PS' && (
             <>
               <div>맞춘 개수: <span className="font-semibold">{lastMetrics.correctResponses}</span></div>
-              <div>평균 반응속도: <span className="font-semibold">{(lastMetrics.timePerResponse || 0).toFixed(1)}ms</span></div>
+              <div>
+                평균 반응속도: 
+                <span className="font-semibold">
+                  {((lastMetrics.timePerResponse || 0) / 1000).toFixed(3)}초
+                </span>
+              </div>
               <div>정확도: <span className="font-semibold">{((lastMetrics.accuracy || 0) * 100).toFixed(1)}%</span></div>
             </>
           )}
@@ -197,11 +202,11 @@ export default function CognitiveBaseline() {
   
   // 게임 시작 타이밍을 useEffect로 통일
   useEffect(() => {
-    if (gameState === 'playing') {
-      startGame(currentGame);
+    if (gameState === 'playing' && currentGame !== null) {
+      setTimeout(() => startGame(currentGame), 0); // 💡 fully defer
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameState, currentGame]);
+  
   
   return (
     <MainLayout withNavigation={false}>

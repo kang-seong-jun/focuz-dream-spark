@@ -21,9 +21,9 @@ export function GameResultsCards() {
     if (!rtResult) {
       const baselineResult = getBaselineResults(user.id).find(r => r.gameType === 'RT');
       if (!baselineResult) return "아직 측정되지 않음";
-      return `평균 반응 시간: ${Math.round(baselineResult.metrics.averageReactionTime)}ms`;
+      return `평균 반응 시간: ${parseFloat(baselineResult.metrics.averageReactionTime.toFixed(3))/1000}s`;
     }
-    return `평균 반응 시간: ${Math.round(rtResult.metrics.averageReactionTime)}ms`;
+    return `평균 반응 시간: ${parseFloat(rtResult.metrics.averageReactionTime.toFixed(3))/1000}s`;
   };
   
   // Format processing speed result
