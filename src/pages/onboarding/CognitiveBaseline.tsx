@@ -257,7 +257,9 @@ export default function CognitiveBaseline() {
                         <p className="text-sm text-muted-foreground">{formatGameResult(gameType)}</p>
                       </div>
                       <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                        {gameResults[gameType] ? Math.round(gameResults[gameType] || 0) : '-'}
+                        {gameResults[gameType] !== null && gameResults[gameType] !== undefined
+                          ? Math.round(gameResults[gameType] as number)
+                          : '-'}
                       </div>
                     </div>
                   </CardContent>
