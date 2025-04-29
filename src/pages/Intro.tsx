@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { MainLayout } from "@/layouts/MainLayout";
-import { motion } from "framer-motion";
 
 export default function Intro() {
   const navigate = useNavigate();
@@ -16,11 +15,7 @@ export default function Intro() {
     <MainLayout withNavigation={false}>
       <div className="min-h-[calc(100vh-2rem)] flex flex-col items-center justify-center p-4">
         {currentStep === 'info' ? (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="max-w-md mx-auto text-center space-y-8"
-          >
+          <div className="max-w-md mx-auto text-center space-y-8 animate-fade-in">
             <h1 className="text-3xl font-bold">잠과 퍼포먼스의 연결고리 찾기</h1>
             
             <div className="space-y-6">
@@ -50,13 +45,9 @@ export default function Intro() {
             >
               다음
             </Button>
-          </motion.div>
+          </div>
         ) : (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="max-w-md mx-auto space-y-6 p-6 bg-white/95 rounded-lg shadow-sm"
-          >
+          <div className="max-w-md mx-auto space-y-6 p-6 bg-white/95 rounded-lg shadow-sm animate-fade-in">
             <h1 className="text-2xl font-bold text-center">소중한 정보, 안전하게 활용됩니다.</h1>
             
             <div className="space-y-4 text-sm">
@@ -98,7 +89,7 @@ export default function Intro() {
             >
               동의하고 계속하기
             </Button>
-          </motion.div>
+          </div>
         )}
       </div>
     </MainLayout>
