@@ -8,6 +8,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useGame } from "@/context/GameContext";
 import { HexagonChart } from "@/components/dashboard/HexagonChart";
 import { LatestSleepSummary } from "@/components/dashboard/LatestSleepSummary";
+import { GameResultsCards } from "@/components/dashboard/GameResultsCards";
 import { GameType } from '@/types';
 
 export default function Dashboard() {
@@ -103,6 +104,9 @@ export default function Dashboard() {
               <div className="text-center text-sm text-muted-foreground mt-4">
                 {getBaselineResults(user.id).length > 0 ? '최근 기록 기준' : '초기 측정 결과'}
               </div>
+              
+              {/* Add Game Results Cards */}
+              <GameResultsCards />
             </CardContent>
           </Card>
           
