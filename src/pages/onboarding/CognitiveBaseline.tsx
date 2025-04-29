@@ -66,17 +66,28 @@ export default function CognitiveBaseline() {
     if (typeof metrics.score === 'number' && !isNaN(metrics.score) && metrics.score !== null) {
       return Math.max(0, Math.round(metrics.score));
     }
-    // 이하 기존 로직 백업
     switch (gameType) {
-      case 'RT':
+      case 'RT': {
         const reactionTime = metrics.averageReactionTime || 1000;
         return Math.max(0, Math.min(100, 100 - ((reactionTime - 150) / 850) * 100));
-      case 'PS':
-        const processedItems = metrics.itemsProcessed || 0;
-        return Math.min(100, (processedItems / 25) * 100);
-      case 'WM2':
+      }
+      case 'PS': {
+        // 맞춘 개수와 평균 반응속도를 모두 반영한 점수화
+        const correct = metrics.correctResponses || 0;
+        const avgSpeed = metrics.timePerResponse || 1000;
+        // 1000ms 이상이면 0점 패널티, 아니면 (맞춘개수*2)+(100-평균반응속도/10)
+        let score = 0;
+        if (avgSpeed >= 1000) {
+          score = correct * 2;
+        } else {
+          score = correct * 2 + (100 - avgSpeed / 10);
+        }
+        return Math.max(0, Math.round(score));
+      }
+      case 'WM2': {
         const memorySpan = metrics.workingMemorySpan || 0;
         return Math.min(100, (memorySpan / 10) * 100);
+      }
       default:
         return 50;
     }
@@ -169,8 +180,8 @@ export default function CognitiveBaseline() {
           {currentGame === 'PS' && (
             <>
               <div>맞춘 개수: <span className="font-semibold">{lastMetrics.correctResponses}</span></div>
-              <div>정확도: <span className="font-semibold">{((lastMetrics.accuracy || 0) * 100).toFixed(1)}%</span></div>
               <div>평균 반응속도: <span className="font-semibold">{(lastMetrics.timePerResponse || 0).toFixed(1)}ms</span></div>
+              <div>정확도: <span className="font-semibold">{((lastMetrics.accuracy || 0) * 100).toFixed(1)}%</span></div>
             </>
           )}
           {currentGame === 'WM2' && (
