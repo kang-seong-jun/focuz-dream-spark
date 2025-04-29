@@ -94,27 +94,32 @@ export function ReactionTimeGame({ onComplete, isBaseline = false }: ReactionTim
         description: "자극이 나타난 후에 반응하세요.",
         variant: "destructive",
       });
-      
       // Clear stimulus timer and continue with next trial
       if (stimulusTimer.current) {
         clearTimeout(stimulusTimer.current);
         stimulusTimer.current = null;
       }
-      
       setTimeout(() => {
         setIsEarly(false);
         handleNextTrial();
       }, 1000);
-      
       return;
     }
-    
+
+    // stimulusType이 'target'일 때만 반응속도 기록 (실제 클릭)
+    if (gameState === 'stimulus' && stimulusType === 'target') {
+      const reactionTime = Date.now() - (stimulusStartTime.current || Date.now());
+      if (reactionTime >= 100 && reactionTime <= 1500) {
+        setReactionTimes(prev => [...prev, reactionTime]);
+      }
+    }
+
     // Clear response timer
     if (responseTimer.current) {
       clearTimeout(responseTimer.current);
       responseTimer.current = null;
     }
-    
+
     handleNextTrial();
   };
   
