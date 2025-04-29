@@ -10,7 +10,7 @@ import { ReactionTimeGame } from "@/components/games/ReactionTimeGame";
 import { AttentionGame } from "@/components/games/AttentionGame";
 import { ProcessingSpeedGame } from "@/components/games/ProcessingSpeedGame";
 import { DecisionMakingGame } from "@/components/games/DecisionMakingGame";
-import { ExecutiveFunctionGame } from "@/components/games/ExecutiveFunction";
+import { WorkingMemoryGame } from "@/components/games/WorkingMemoryGame";
 
 export default function CognitiveBaseline() {
   const navigate = useNavigate();
@@ -19,7 +19,7 @@ export default function CognitiveBaseline() {
   const [currentGameIndex, setCurrentGameIndex] = useState(0);
   
   // List of games for baseline in fixed order
-  const gameOrder: GameType[] = ['WM', 'RT', 'ATT', 'PS', 'DM', 'EF'];
+  const gameOrder: GameType[] = ['WM', 'RT', 'ATT', 'PS', 'DM', 'WM2'];
   const currentGame = gameOrder[currentGameIndex];
   
   const handleStartBaseline = () => {
@@ -79,9 +79,9 @@ export default function CognitiveBaseline() {
             isBaseline={true} 
           />
         );
-      case 'EF':
+      case 'WM2':
         return (
-          <ExecutiveFunctionGame 
+          <WorkingMemoryGame 
             onComplete={handleGameComplete} 
             isBaseline={true} 
           />

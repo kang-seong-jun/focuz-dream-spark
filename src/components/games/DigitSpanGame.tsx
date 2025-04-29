@@ -1,8 +1,6 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { toast } from "@/components/ui/use-toast";
-import { useGame } from "@/context/GameContext";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface DigitSpanGameProps {
   onComplete: (metrics: Record<string, any>) => void;
@@ -11,185 +9,190 @@ interface DigitSpanGameProps {
 
 export function DigitSpanGame({ onComplete, isBaseline = false }: DigitSpanGameProps) {
   // Game state
-  const [gameState, setGameState] = useState<'instruction' | 'showing' | 'input' | 'feedback' | 'finished'>('instruction');
-  const [currentSequence, setCurrentSequence] = useState<number[]>([]);
-  const [userInput, setUserInput] = useState<number[]>([]);
-  const [sequenceLength, setSequenceLength] = useState(7); // Start with 7 digits
-  const [currentDigitIndex, setCurrentDigitIndex] = useState(0);
-  const [failuresAtCurrentLength, setFailuresAtCurrentLength] = useState(0);
-  const [correctSequences, setCorrectSequences] = useState(0);
-  const [incorrectSequences, setIncorrectSequences] = useState(0);
-  const [totalAttempts, setTotalAttempts] = useState(0);
-  const [startTime, setStartTime] = useState<number | null>(null);
-  const [totalResponseTime, setTotalResponseTime] = useState(0);
-  const [digitKey, setDigitKey] = useState(0); // Key for animation triggering
-  
+  const [gameState, setGameState] = useState<'instruction' | 'playing' | 'finished'>('instruction');
   const [isPaused, setIsPaused] = useState(false);
-  
-  const MAX_FAILURES = 2;
-  const MAX_CORRECT_PER_LEVEL = 1; // Number of correct sequences before increasing difficulty
 
-  // Generate a random sequence of digits
-  const generateSequence = useCallback((length: number): number[] => {
-    const sequence = [];
-    for (let i = 0; i < length; i++) {
-      sequence.push(Math.floor(Math.random() * 10)); // 0-9
-    }
-    return sequence;
-  }, []);
+  // Sequence generation
+  const [currentSequence, setCurrentSequence] = useState<number[]>([]);
+  const [correctSequences, setCorrectSequences] = useState<number[][]>([]);
+  const [inputSequence, setInputSequence] = useState<number[]>([]);
+  const [sequenceLength, setSequenceLength] = useState(3);
 
-  // Start a new trial
-  const startNewTrial = useCallback(() => {
-    setCurrentSequence(generateSequence(sequenceLength));
-    setUserInput([]);
-    setCurrentDigitIndex(0);
-    setGameState('showing');
-  }, [generateSequence, sequenceLength]);
+  // UI and timing
+  const [displayNumber, setDisplayNumber] = useState<number | null>(null);
+  const [feedback, setFeedback] = useState<string>("");
+  const [showFeedback, setShowFeedback] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
 
-  // Show the next digit in the sequence
-  useEffect(() => {
-    if (gameState === 'showing' && !isPaused) {
-      // If we've shown all digits, move to input phase
-      if (currentDigitIndex >= currentSequence.length) {
-        setGameState('input');
-        setStartTime(Date.now());
-        return;
-      }
+  // Metrics
+  const [totalAttempts, setTotalAttempts] = useState(0);
+  const [correctAttempts, setCorrectAttempts] = useState(0);
+  const [errorCount, setErrorCount] = useState(0);
 
-      // Show the current digit with animation
-      setDigitKey(prev => prev + 1);
-      
-      // Show the current digit
-      const timer = setTimeout(() => {
-        setCurrentDigitIndex(prev => prev + 1);
-      }, 1000);
+  // Refs
+  const timerRef = useRef<number | null>(null);
 
-      return () => clearTimeout(timer);
-    }
-  }, [currentDigitIndex, currentSequence.length, gameState, isPaused]);
-
-  // Handle user input
-  const handleDigitInput = (digit: number) => {
-    setUserInput(prev => [...prev, digit]);
-  };
-
-  // Check the sequence after user completes input
-  const checkSequence = () => {
-    if (startTime) {
-      setTotalResponseTime(prev => prev + (Date.now() - startTime));
-    }
-    
-    setTotalAttempts(prev => prev + 1);
-    
-    // Check if the sequences match
-    let isCorrect = true;
-    if (userInput.length !== currentSequence.length) {
-      isCorrect = false;
-    } else {
-      for (let i = 0; i < userInput.length; i++) {
-        if (userInput[i] !== currentSequence[i]) {
-          isCorrect = false;
-          break;
-        }
-      }
-    }
-
-    if (isCorrect) {
-      const newCorrectSequences = correctSequences + 1;
-      setCorrectSequences(newCorrectSequences);
-      setGameState('feedback');
-      toast({
-        title: "정답입니다!",
-        description: "다음 단계로 넘어갑니다.",
-      });
-      
-      // Reset failures
-      setFailuresAtCurrentLength(0);
-      
-      // If they've done enough correct sequences at this length, increase difficulty
-      if (newCorrectSequences % MAX_CORRECT_PER_LEVEL === 0 && newCorrectSequences > 0 && !isBaseline) {
-        setSequenceLength(prev => Math.min(prev + 1, 9)); // Increase length up to max of 9
-      }
-      
-      // If they've done enough correct sequences overall, finish the game
-      if (newCorrectSequences + incorrectSequences >= 5) {
-        finishGame();
-      } else {
-        // Start new trial after brief pause
-        setTimeout(() => {
-          startNewTrial();
-        }, 1500);
-      }
-    } else {
-      const newIncorrectSequences = incorrectSequences + 1;
-      setIncorrectSequences(newIncorrectSequences);
-      setGameState('feedback');
-      toast({
-        title: "틀렸습니다",
-        description: "다시 시도합니다.",
-        variant: "destructive",
-      });
-      
-      // Increment failure counter
-      const newFailures = failuresAtCurrentLength + 1;
-      setFailuresAtCurrentLength(newFailures);
-      
-      // If they've reached max failures or enough total attempts, finish the game
-      if (newFailures >= MAX_FAILURES || (newCorrectSequences + newIncorrectSequences >= 5)) {
-        finishGame();
-      } else {
-        // Otherwise try again with same length
-        setTimeout(() => {
-          startNewTrial();
-        }, 1500);
-      }
-    }
-  };
-
-  // Finish the game and report metrics
-  const finishGame = () => {
-    setGameState('finished');
-    
-    const metrics = {
-      memorySpan: sequenceLength,
-      correctSequences,
-      incorrectSequences,
-      totalAttempts,
-      errorRate: totalAttempts > 0 ? incorrectSequences / totalAttempts : 0,
-      avgTimePerSequence: correctSequences > 0 ? totalResponseTime / correctSequences : 0,
-      score: calculateScore(correctSequences, incorrectSequences),
-    };
-    
-    onComplete(metrics);
-  };
-
-  // Calculate score based on correct and incorrect sequences
-  const calculateScore = (correct: number, incorrect: number) => {
-    // Simple scoring: 10 points per correct sequence, minus 5 points per incorrect
-    return Math.max(0, (correct * 10) - (incorrect * 5));
-  };
+  // Constants
+  const MAX_LENGTH = 9;
+  const MIN_LENGTH = 3;
+  const NUMBER_DURATION = 1000; // ms
+  const PAUSE_DURATION = 500; // ms
 
   // Start the game
-  const handleStart = () => {
-    startNewTrial();
+  const startGame = () => {
+    setGameState('playing');
+    setSequenceLength(MIN_LENGTH);
+    setCurrentSequence([]);
+    setCorrectSequences([]);
+    setInputSequence([]);
+    setTotalAttempts(0);
+    setCorrectAttempts(0);
+    setErrorCount(0);
+    generateSequence();
   };
 
-  // Handle pause/resume
+  // Generate a new sequence
+  const generateSequence = () => {
+    setIsGenerating(true);
+    setDisplayNumber(null);
+    setInputSequence([]);
+    setFeedback("");
+    setShowFeedback(false);
+
+    const newSequence: number[] = [];
+    for (let i = 0; i < sequenceLength; i++) {
+      newSequence.push(Math.floor(Math.random() * 9) + 1); // Numbers 1-9
+    }
+    setCurrentSequence(newSequence);
+
+    let i = 0;
+    timerRef.current = window.setInterval(() => {
+      setDisplayNumber(newSequence[i]);
+      i++;
+
+      if (i === newSequence.length) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+        setTimeout(() => {
+          setDisplayNumber(null);
+          setIsGenerating(false);
+        }, PAUSE_DURATION);
+      }
+    }, NUMBER_DURATION + PAUSE_DURATION);
+  };
+
+  // Handle user input
+  const handleInput = (number: number) => {
+    if (isGenerating || isPaused) return;
+
+    setInputSequence([...inputSequence, number]);
+  };
+
+  // Submit the sequence
+  const handleSubmit = () => {
+    if (isGenerating || isPaused) return;
+
+    setTotalAttempts(prev => prev + 1);
+
+    const isCorrect =
+      inputSequence.length === currentSequence.length &&
+      inputSequence.every((num, i) => num === currentSequence[i]);
+
+    if (isCorrect) {
+      setCorrectAttempts(prev => prev + 1);
+      setCorrectSequences([...correctSequences, currentSequence]);
+      setFeedback("정답입니다!");
+      setShowFeedback(true);
+
+      // Increase difficulty
+      if (sequenceLength < MAX_LENGTH) {
+        setSequenceLength(prev => prev + 1);
+      }
+
+      // Generate next sequence after delay
+      setTimeout(() => {
+        setShowFeedback(false);
+        generateSequence();
+      }, 1500);
+    } else {
+      setErrorCount(prev => prev + 1);
+      setFeedback("틀렸습니다. 다시 시도하세요.");
+      setShowFeedback(true);
+
+      // Reset input
+      setInputSequence([]);
+
+      // Generate same sequence after delay
+      setTimeout(() => {
+        setShowFeedback(false);
+        generateSequence();
+      }, 1500);
+    }
+  };
+
+  // Finish the game
+  const finishGame = () => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+    }
+
+    setGameState('finished');
+
+    // Calculate metrics
+    const accuracy = totalAttempts > 0 ? correctAttempts / totalAttempts : 0;
+    const errorRate = 1 - accuracy;
+    const memorySpan = correctSequences.length > 0 ? correctSequences[correctSequences.length - 1].length : MIN_LENGTH;
+    const score = calculateScore(memorySpan, accuracy, errorRate);
+
+    const metrics = {
+      memorySpan,
+      accuracy,
+      errorRate,
+      score,
+      totalAttempts,
+      correctAttempts,
+    };
+
+    // Send results
+    setTimeout(() => {
+      onComplete(metrics);
+    }, 1500);
+  };
+
+  // Toggle pause state
   const togglePause = () => {
     setIsPaused(prev => !prev);
   };
 
-  // Reset user input
-  const resetInput = () => {
-    setUserInput([]);
+  // Calculate score
+  const calculateScore = (memorySpan: number, accuracy: number, errorRate: number) => {
+    // Base score from memory span (0-70 points)
+    const spanScore = memorySpan * 7;
+
+    // Accuracy component (0-20 points)
+    const accuracyScore = accuracy * 20;
+
+    // Error penalty (0-10 points)
+    const errorPenalty = errorRate * 10;
+
+    return Math.round(spanScore + accuracyScore - errorPenalty);
   };
+
+  // Clean up on component unmount
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+    };
+  }, []);
 
   return (
     <Card className="w-full max-w-md mx-auto bg-white/95 backdrop-blur-sm shadow-lg border-0">
       <CardHeader className="border-b pb-3">
-        <CardTitle className="text-center">숫자 순서 기억하기</CardTitle>
+        <CardTitle className="text-center">숫자 기억하기</CardTitle>
         <div className="absolute right-4 top-4">
-          {gameState !== 'instruction' && gameState !== 'finished' && (
+          {gameState === 'playing' && (
             <Button variant="outline" size="sm" onClick={togglePause}>
               {isPaused ? "계속하기" : "일시정지"}
             </Button>
@@ -199,82 +202,54 @@ export function DigitSpanGame({ onComplete, isBaseline = false }: DigitSpanGameP
       <CardContent className="pt-6 pb-4 min-h-[300px] flex flex-col items-center justify-center">
         {gameState === 'instruction' && (
           <div className="text-center space-y-4">
-            <p className="text-lg">화면에 나타나는 숫자를 순서대로 기억한 다음, 숫자가 모두 사라진 후 기억한 순서대로 입력하세요.</p>
-            <p>기억할 숫자 개수: {sequenceLength}개</p>
-            <Button onClick={handleStart}>시작하기</Button>
+            <p className="text-lg">화면에 나타나는 숫자를 순서대로 기억하세요.</p>
+            <p>각 라운드마다 숫자가 점점 늘어납니다.</p>
+            <Button onClick={startGame}>시작하기</Button>
           </div>
         )}
 
-        {gameState === 'showing' && !isPaused && (
-          <div className="text-center space-y-4">
-            <p className="text-sm text-muted-foreground">숫자를 기억하세요</p>
-            {currentDigitIndex < currentSequence.length ? (
-              <div className="relative h-24 flex items-center justify-center overflow-hidden">
-                <div 
-                  key={digitKey}
-                  className="text-6xl font-bold animate-slide-up absolute"
-                >
-                  {currentSequence[currentDigitIndex]}
-                </div>
-              </div>
-            ) : (
-              <div className="text-xl">숫자를 입력할 준비를 하세요...</div>
-            )}
-          </div>
-        )}
-
-        {gameState === 'input' && !isPaused && (
-          <div className="text-center space-y-6">
-            <p className="text-sm text-muted-foreground">기억한 숫자를 순서대로 입력하세요</p>
-            
-            <div className="flex justify-center gap-2 mb-4">
-              {userInput.map((digit, index) => (
-                <div key={index} className="w-8 h-10 border-b-2 border-primary flex items-center justify-center">
-                  {digit}
-                </div>
-              ))}
-              {Array(sequenceLength - userInput.length).fill(0).map((_, index) => (
-                <div key={`empty-${index}`} className="w-8 h-10 border-b-2 border-muted flex items-center justify-center">
-                </div>
-              ))}
+        {gameState === 'playing' && !isPaused && (
+          <div className="flex flex-col items-center w-full">
+            <div className="mb-6">
+              <p className="text-sm text-muted-foreground mb-2">
+                {isGenerating ? "숫자 기억하기" : "숫자 입력하기"}
+              </p>
+              <p className="text-sm">
+                길이: {sequenceLength} | 시도: {totalAttempts} | 정답: {correctAttempts}
+              </p>
             </div>
-            
-            <div className="grid grid-cols-3 gap-2">
-              {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((digit) => (
-                <Button 
-                  key={digit} 
-                  variant="outline" 
-                  className="w-12 h-12 text-lg"
-                  onClick={() => handleDigitInput(digit)}
-                  disabled={userInput.length >= sequenceLength}
-                >
-                  {digit}
+
+            <div className="text-5xl font-bold">
+              {displayNumber !== null ? displayNumber : (isGenerating ? "..." : "")}
+            </div>
+
+            {showFeedback && (
+              <div className="mt-4 text-lg">{feedback}</div>
+            )}
+
+            {!isGenerating && displayNumber === null && (
+              <div className="grid grid-cols-3 gap-2 mt-6">
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(number => (
+                  <Button
+                    key={number}
+                    onClick={() => handleInput(number)}
+                    className="w-16 h-12"
+                  >
+                    {number}
+                  </Button>
+                ))}
+                <Button onClick={handleSubmit} className="col-span-3 w-full">
+                  확인
                 </Button>
-              ))}
-              <Button 
-                variant="outline" 
-                className="w-12 h-12 text-lg"
-                onClick={resetInput}
-              >
-                ⌫
-              </Button>
-              <Button 
-                key={0} 
-                variant="outline" 
-                className="w-12 h-12 text-lg"
-                onClick={() => handleDigitInput(0)}
-                disabled={userInput.length >= sequenceLength}
-              >
-                0
-              </Button>
-              <Button 
-                variant="outline" 
-                className="w-12 h-12 text-lg bg-primary text-primary-foreground hover:bg-primary/90"
-                onClick={checkSequence}
-                disabled={userInput.length < sequenceLength}
-              >
-                ✓
-              </Button>
+              </div>
+            )}
+
+            <div className="mt-4">
+              <p className="text-sm text-muted-foreground">
+                {inputSequence.length > 0
+                  ? `입력한 숫자: ${inputSequence.join(" ")}`
+                  : "숫자를 입력하세요..."}
+              </p>
             </div>
           </div>
         )}
@@ -289,7 +264,7 @@ export function DigitSpanGame({ onComplete, isBaseline = false }: DigitSpanGameP
         {gameState === 'finished' && (
           <div className="text-center space-y-4">
             <h3 className="text-xl font-semibold">게임 완료!</h3>
-            <p>점수 계산 중...</p>
+            <p>최종 점수 계산 중...</p>
           </div>
         )}
       </CardContent>

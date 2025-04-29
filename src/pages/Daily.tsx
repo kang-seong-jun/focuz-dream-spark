@@ -14,7 +14,7 @@ import { ReactionTimeGame } from "@/components/games/ReactionTimeGame";
 import { AttentionGame } from "@/components/games/AttentionGame";
 import { ProcessingSpeedGame } from "@/components/games/ProcessingSpeedGame";
 import { DecisionMakingGame } from "@/components/games/DecisionMakingGame";
-import { ExecutiveFunctionGame } from "@/components/games/ExecutiveFunction";
+import { WorkingMemoryGame } from "@/components/games/WorkingMemoryGame";
 
 export default function Daily() {
   const { user, isLoading } = useAuth();
@@ -89,8 +89,8 @@ export default function Daily() {
         return <ProcessingSpeedGame onComplete={handleGameComplete} />;
       case 'DM':
         return <DecisionMakingGame onComplete={handleGameComplete} />;
-      case 'EF':
-        return <ExecutiveFunctionGame onComplete={handleGameComplete} />;
+      case 'WM2':
+        return <WorkingMemoryGame onComplete={handleGameComplete} />;
       default:
         return <DigitSpanGame onComplete={handleGameComplete} />;
     }
@@ -168,16 +168,16 @@ export default function Daily() {
             </div>
           </>
         );
-      case 'EF':
+      case 'WM2':
         return (
           <>
             <div className="flex justify-between mb-2">
-              <span className="text-muted-foreground">억제 정확도:</span>
-              <span className="font-medium">{(gameMetrics.inhibitionAccuracy * 100).toFixed(1)}%</span>
+              <span className="text-muted-foreground">기억 패턴 길이:</span>
+              <span className="font-medium">{gameMetrics.workingMemorySpan}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-muted-foreground">반응 억제 오류율:</span>
-              <span className="font-medium">{(gameMetrics.commissionErrors * 100).toFixed(1)}%</span>
+              <span className="text-muted-foreground">정확도:</span>
+              <span className="font-medium">{(gameMetrics.accuracy * 100).toFixed(1)}%</span>
             </div>
           </>
         );

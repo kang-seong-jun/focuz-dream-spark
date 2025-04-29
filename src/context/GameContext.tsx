@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useState, ReactNode } from 'react';
 import { GameType, GameResult, GAME_TYPES } from '@/types';
 import { toast } from "@/components/ui/use-toast";
@@ -115,7 +114,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
 
   // Get the daily game based on simple rotation
   const getDailyGame = (): GameType => {
-    const gameTypes = Object.keys(GAME_TYPES) as GameType[];
+    const gameTypes: GameType[] = ['WM', 'RT', 'ATT', 'PS', 'DM', 'WM2'];
     const today = new Date();
     // Simple rotation: day of month % number of games
     const index = today.getDate() % gameTypes.length;
