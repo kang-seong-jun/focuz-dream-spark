@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,8 +28,8 @@ export function ReactionTimeGame({ onComplete, isBaseline = false }: ReactionTim
   const stimulusStartTime = useRef<number | null>(null);
   
   // Constants
-  const MAX_TRIALS = 20; // Total number of trials
-  const NON_TARGET_RATIO = 0.2; // 20% of trials are non-targets
+  const MAX_TRIALS = 5; // Total number of trials (5회)
+  const NON_TARGET_RATIO = 0; // 빨간 네모(비타겟) 없음, 항상 target만
   const MIN_WAIT_TIME = 1000; // Minimum wait time in ms
   const MAX_WAIT_TIME = 3000; // Maximum wait time in ms
   const RESPONSE_TIMEOUT = 1500; // Maximum time to respond in ms
@@ -54,17 +53,20 @@ export function ReactionTimeGame({ onComplete, isBaseline = false }: ReactionTim
     
     // Set timer for stimulus
     stimulusTimer.current = window.setTimeout(() => {
-      // Determine if this is a target or non-target trial
-      const isNonTarget = Math.random() < NON_TARGET_RATIO;
-      setStimulusType(isNonTarget ? 'nontarget' : 'target');
+      // 항상 target만 등장
+      setStimulusType('target');
       setGameState('stimulus');
       stimulusStartTime.current = Date.now();
       
       // Set timeout for response
       responseTimer.current = window.setTimeout(() => {
-        // If the stimulus was a target and no response, count as omission error
+        // 항상 target만 등장하므로 바로 반응속도 측정
         if (stimulusType === 'target') {
-          setOmissionErrors(prev => prev + 1);
+          const reactionTime = Date.now() - (stimulusStartTime.current || Date.now());
+          // Only count physiologically plausible reaction times
+          if (reactionTime >= 100 && reactionTime <= 1500) {
+            setReactionTimes(prev => [...prev, reactionTime]);
+          }
         }
         handleNextTrial();
       }, RESPONSE_TIMEOUT);
@@ -105,25 +107,6 @@ export function ReactionTimeGame({ onComplete, isBaseline = false }: ReactionTim
       }, 1000);
       
       return;
-    }
-    
-    // If it's not a target, it's a commission error
-    if (stimulusType === 'nontarget') {
-      setCommissionErrors(prev => prev + 1);
-      toast({
-        title: "틀렸습니다!",
-        description: "빨간색에는 반응하지 마세요.",
-        variant: "destructive",
-      });
-    } 
-    // If it's a target, calculate reaction time
-    else if (stimulusType === 'target') {
-      const reactionTime = Date.now() - (stimulusStartTime.current || Date.now());
-      
-      // Only count physiologically plausible reaction times
-      if (reactionTime >= 100 && reactionTime <= 1500) {
-        setReactionTimes(prev => [...prev, reactionTime]);
-      }
     }
     
     // Clear response timer
@@ -264,7 +247,6 @@ export function ReactionTimeGame({ onComplete, isBaseline = false }: ReactionTim
         {gameState === 'instruction' && (
           <div className="text-center space-y-4">
             <p className="text-lg">화면에 초록색 원이 나타나면 최대한 빠르게 클릭하세요.</p>
-            <p>빨간색 사각형이 나타나면 클릭하지 마세요!</p>
             <Button onClick={handleStart}>시작하기</Button>
           </div>
         )}
@@ -285,12 +267,7 @@ export function ReactionTimeGame({ onComplete, isBaseline = false }: ReactionTim
             className="w-40 h-40 flex items-center justify-center cursor-pointer"
             onClick={handleResponse}
           >
-            {stimulusType === 'target' && (
-              <div className="w-32 h-32 rounded-full bg-green-500 animate-scale-in"></div>
-            )}
-            {stimulusType === 'nontarget' && (
-              <div className="w-32 h-32 bg-red-500 animate-scale-in"></div>
-            )}
+            <div className="w-32 h-32 rounded-full bg-green-500 animate-scale-in"></div>
           </div>
         )}
 
@@ -311,6 +288,18 @@ export function ReactionTimeGame({ onComplete, isBaseline = false }: ReactionTim
         {!isPaused && gameState !== 'instruction' && gameState !== 'finished' && (
           <div className="absolute top-4 left-4 p-2 bg-white/80 rounded text-sm">
             진행: {trialCount + 1}/{MAX_TRIALS}
+          </div>
+        )}
+
+        {/* 매 트라이얼마다 반응속도 결과 표시 */}
+        {!isPaused && gameState !== 'instruction' && gameState !== 'finished' && reactionTimes.length > 0 && (
+          <div className="w-full mt-6 text-center">
+            <div className="text-sm text-muted-foreground">
+              최근 반응속도: <span className="font-semibold">{reactionTimes[reactionTimes.length-1]}ms</span><br />
+              평균 반응속도: <span className="font-semibold">{(
+                reactionTimes.reduce((a, b) => a + b, 0) / reactionTimes.length
+              ).toFixed(1)}ms</span>
+            </div>
           </div>
         )}
       </CardContent>
