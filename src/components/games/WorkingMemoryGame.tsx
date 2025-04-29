@@ -1,7 +1,7 @@
-
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useAuth } from "@/context/AuthContext";
 
 interface WorkingMemoryGameProps {
   onComplete: (metrics: Record<string, any>) => void;
@@ -14,155 +14,169 @@ export function WorkingMemoryGame({ onComplete, isBaseline = false }: WorkingMem
   const [isPaused, setIsPaused] = useState(false);
   const [score, setScore] = useState(0);
   const [round, setRound] = useState(0);
-  const [pattern, setPattern] = useState<number[]>([]);
-  const [playerPattern, setPlayerPattern] = useState<number[]>([]);
   const [isShowingPattern, setIsShowingPattern] = useState(false);
-  const [currentPatternIndex, setCurrentPatternIndex] = useState(0);
   const [patternCompleted, setPatternCompleted] = useState(false);
   
+  // Selections and patterns
+  const [selectedCells, setSelectedCells] = useState<number[]>([]);
+  const [pattern, setPattern] = useState<number[]>([]);
+  const [correctSelections, setCorrectSelections] = useState(0);
+  const [incorrectSelections, setIncorrectSelections] = useState(0);
+  
+  // Game settings based on round
+  const [gridSize, setGridSize] = useState(4); // 4x4 grid for first round
+  const [patternLength, setPatternLength] = useState(6); // 6 cells for first round
+  
   // Game settings
-  const MAX_ROUNDS = 10;
-  const INITIAL_PATTERN_LENGTH = 3;
-  const PATTERN_FLASH_TIME = 500; // ms
-  const PATTERN_PAUSE_TIME = 300; // ms
+  const MAX_ROUNDS = 3;
+  const PATTERN_SHOW_TIME = 600; // ms - all cells shown at once for 0.6 seconds
   
-  // Refs
-  const patternTimerRef = useRef<number | null>(null);
-  
-  // Game grid setup - 3x3 grid of squares (positions 0-8)
-  const gridPositions = Array(9).fill(0).map((_, i) => i);
+  // Refs for timers
+  const timerRef = useRef<number | null>(null);
+  const gameCompleted = useRef<boolean>(false);
   
   // Initialize or reset game
   const startGame = () => {
     setGameState('playing');
     setScore(0);
     setRound(0);
+    setGridSize(4); // 4x4 grid for first round
+    setPatternLength(6); // 6 cells for first round
     setPatternCompleted(false);
-    startNewRound();
+    generatePattern();
   };
   
-  // Start a new round
-  const startNewRound = useCallback(() => {
-    // Generate new pattern - current length is base length + round number
-    const patternLength = INITIAL_PATTERN_LENGTH + Math.min(round, 5); // Max length of 8
+  // Generate a new pattern for the current round
+  const generatePattern = () => {
+    // Clear any existing pattern and selections
+    setPattern([]);
+    setSelectedCells([]);
+    setCorrectSelections(0);
+    setIncorrectSelections(0);
+    
+    // Generate a random pattern
+    const totalCells = gridSize * gridSize;
     const newPattern: number[] = [];
     
+    // Create an array of all cell indices
+    const availableCells = Array.from({ length: totalCells }, (_, i) => i);
+    
+    // Randomly select cells for the pattern
     for (let i = 0; i < patternLength; i++) {
-      // Generate random position (0-8)
-      const position = Math.floor(Math.random() * 9);
-      newPattern.push(position);
+      if (availableCells.length === 0) break;
+      
+      // Random index from available cells
+      const randomIndex = Math.floor(Math.random() * availableCells.length);
+      // Remove and get the cell
+      const cell = availableCells.splice(randomIndex, 1)[0];
+      newPattern.push(cell);
     }
     
     setPattern(newPattern);
-    setPlayerPattern([]);
-    setIsShowingPattern(true);
-    setCurrentPatternIndex(0);
-    setPatternCompleted(false);
-    
-    // Start showing pattern sequence
     showPattern(newPattern);
-  }, [round]);
-  
-  // Show the pattern sequence
-  const showPattern = (patternToShow: number[]) => {
-    if (patternTimerRef.current) {
-      clearTimeout(patternTimerRef.current);
-    }
-    
-    setCurrentPatternIndex(-1);
-    
-    const showNextInPattern = (index: number) => {
-      if (index >= patternToShow.length) {
-        // Pattern finished showing
-        setIsShowingPattern(false);
-        setCurrentPatternIndex(-1);
-        return;
-      }
-      
-      setCurrentPatternIndex(index);
-      
-      // Show for PATTERN_FLASH_TIME ms
-      patternTimerRef.current = window.setTimeout(() => {
-        setCurrentPatternIndex(-1);
-        
-        // Pause before showing next
-        patternTimerRef.current = window.setTimeout(() => {
-          showNextInPattern(index + 1);
-        }, PATTERN_PAUSE_TIME);
-      }, PATTERN_FLASH_TIME);
-    };
-    
-    // Start showing pattern after a brief pause
-    patternTimerRef.current = window.setTimeout(() => {
-      showNextInPattern(0);
-    }, 500);
   };
   
-  // Handle player tile click
-  const handleTileClick = (position: number) => {
+  // Show the pattern to the player
+  const showPattern = (patternToShow: number[]) => {
+    // Clear existing timer
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+    }
+    
+    // Show the pattern
+    setIsShowingPattern(true);
+    
+    // Hide the pattern after PATTERN_SHOW_TIME
+    timerRef.current = window.setTimeout(() => {
+      setIsShowingPattern(false);
+    }, PATTERN_SHOW_TIME);
+  };
+  
+  // Handle cell click
+  const handleCellClick = (cellIndex: number) => {
     if (isShowingPattern || isPaused || gameState !== 'playing' || patternCompleted) return;
     
-    const newPlayerPattern = [...playerPattern, position];
-    setPlayerPattern(newPlayerPattern);
+    // Check if cell is already selected
+    if (selectedCells.includes(cellIndex)) return;
     
-    // Check if this selection matches the pattern so far
-    if (pattern[playerPattern.length] !== position) {
-      // Wrong selection
-      finishGame();
-      return;
+    // Add to selected cells
+    setSelectedCells(prev => [...prev, cellIndex]);
+    
+    // Check if selection is correct
+    const isCorrect = pattern.includes(cellIndex);
+    
+    if (isCorrect) {
+      setCorrectSelections(prev => prev + 1);
+      setScore(prev => prev + 10);
+    } else {
+      setIncorrectSelections(prev => prev + 1);
     }
     
-    // Check if player completed the pattern
-    if (newPlayerPattern.length === pattern.length) {
-      // Pattern completed successfully - increase score
-      setScore(prev => prev + pattern.length * 10);
+    // Check if we've selected enough cells
+    if (selectedCells.length + 1 >= patternLength) {
+      // Pattern completed
       setPatternCompleted(true);
       
-      // Move to next round or finish game
-      if (round >= MAX_ROUNDS - 1) {
-        finishGame();
-      } else {
-        // Wait for user to proceed to next round
-        setGameState('waitingForNext');
-      }
+      // Wait for user to proceed to next round
+      setGameState('waitingForNext');
     }
   };
-
-  // Handle proceeding to next round (user initiated)
+  
+  // Handle proceeding to next round
   const handleNextRound = () => {
-    setRound(prev => prev + 1);
+    const nextRound = round + 1;
+    setRound(nextRound);
+    
+    // Update grid size and pattern length based on round
+    if (nextRound === 1) {
+      // Round 2: 5x5 grid, 10 cells
+      setGridSize(5);
+      setPatternLength(10);
+    } else if (nextRound === 2) {
+      // Round 3: 5x5 grid, 15 cells (or keep the same)
+      setGridSize(5);
+      setPatternLength(10); // Keeping 10 for the third round too
+    }
+    
     setGameState('playing');
-    startNewRound();
+    setPatternCompleted(false);
+    
+    // Allow some time for UI update before generating new pattern
+    setTimeout(() => {
+      generatePattern();
+    }, 100);
   };
   
   // Finish the game
   const finishGame = () => {
-    if (patternTimerRef.current) {
-      clearTimeout(patternTimerRef.current);
+    // Prevent multiple completions
+    if (gameCompleted.current) return;
+    gameCompleted.current = true;
+
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
     }
     
     setGameState('finished');
     
     // Calculate metrics
-    const maxPatternLength = Math.max(
-      INITIAL_PATTERN_LENGTH,
-      INITIAL_PATTERN_LENGTH + round
-    );
-    
-    const workingMemorySpan = maxPatternLength;
-    const accuracy = Math.min(1, score / (MAX_ROUNDS * INITIAL_PATTERN_LENGTH * 10));
+    const totalSelections = correctSelections + incorrectSelections;
+    const accuracy = totalSelections > 0 ? correctSelections / totalSelections : 0;
+    const workingMemorySpan = Math.max(6, 10); // Based on the max pattern length completed
     
     const metrics = {
       workingMemorySpan,
       accuracy,
       score,
       totalRounds: round + 1,
+      correctSelections,
+      incorrectSelections,
     };
     
-    // Send results
+    // Send results after a delay to avoid setState during render
     setTimeout(() => {
       onComplete(metrics);
-    }, 1500);
+    }, 300);
   };
   
   // Toggle pause state
@@ -173,23 +187,59 @@ export function WorkingMemoryGame({ onComplete, isBaseline = false }: WorkingMem
   // Clean up on component unmount
   useEffect(() => {
     return () => {
-      if (patternTimerRef.current) {
-        clearTimeout(patternTimerRef.current);
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
       }
     };
   }, []);
   
-  // Effect for handling rounds
+  // Check if all rounds are complete
   useEffect(() => {
-    if (round > 0 && gameState === 'playing' && !isPaused) {
-      startNewRound();
+    if (round >= MAX_ROUNDS - 1 && patternCompleted) {
+      finishGame();
     }
-  }, [round, gameState, isPaused, startNewRound]);
+  }, [round, patternCompleted]);
+  
+  // Generate grid cells
+  const renderGrid = () => {
+    const cells = [];
+    const totalCells = gridSize * gridSize;
+    
+    for (let i = 0; i < totalCells; i++) {
+      cells.push(
+        <div
+          key={i}
+          className={`
+            aspect-square rounded-md cursor-pointer transition-all
+            ${isShowingPattern && pattern.includes(i)
+              ? 'bg-focus-purple scale-105'
+              : selectedCells.includes(i)
+                ? 'bg-slate-400'
+                : 'bg-slate-200 hover:bg-slate-300'
+            }
+          `}
+          onClick={() => handleCellClick(i)}
+        />
+      );
+    }
+    
+    return (
+      <div 
+        className={`grid gap-1 w-full max-w-xs mx-auto aspect-square`}
+        style={{ gridTemplateColumns: `repeat(${gridSize}, 1fr)` }}
+      >
+        {cells}
+      </div>
+    );
+  };
+  
+  // Get user from auth context
+  const { user } = useAuth();
   
   return (
     <Card className="w-full max-w-md mx-auto bg-white/95 backdrop-blur-sm shadow-lg border-0">
       <CardHeader className="border-b pb-3">
-        <CardTitle className="text-center">패턴 기억하기</CardTitle>
+        <CardTitle className="text-center">격자 기억하기</CardTitle>
         <div className="absolute right-4 top-4">
           {gameState === 'playing' && (
             <Button variant="outline" size="sm" onClick={togglePause}>
@@ -201,15 +251,15 @@ export function WorkingMemoryGame({ onComplete, isBaseline = false }: WorkingMem
       <CardContent className="pt-6 pb-4 min-h-[300px] flex flex-col items-center justify-center">
         {gameState === 'instruction' && (
           <div className="text-center space-y-4">
-            <p className="text-lg">화면에 나타나는 타일 패턴을 기억한 후, 같은 순서대로 클릭하세요.</p>
-            <p>각 라운드마다 패턴이 점점 길어집니다.</p>
+            <p className="text-lg">화면에 잠시 표시되는 격자 패턴을 기억한 후, 같은 위치를 클릭하세요.</p>
+            <p>총 3라운드로 진행되며, 라운드마다 기억해야 할 패턴이 더 복잡해집니다.</p>
             <Button onClick={startGame}>시작하기</Button>
           </div>
         )}
 
         {gameState === 'playing' && !isPaused && (
           <div className="flex flex-col items-center w-full">
-            <div className="mb-6">
+            <div className="mb-4">
               <p className="text-sm text-muted-foreground mb-2">
                 {isShowingPattern ? "패턴 기억하기" : "패턴 입력하기"}
               </p>
@@ -218,29 +268,13 @@ export function WorkingMemoryGame({ onComplete, isBaseline = false }: WorkingMem
               </p>
             </div>
             
-            <div className="grid grid-cols-3 gap-2 w-64 h-64">
-              {gridPositions.map((position) => (
-                <div 
-                  key={position}
-                  className={`
-                    w-20 h-20 rounded-md cursor-pointer transition-all
-                    ${currentPatternIndex === pattern.indexOf(position) && pattern.includes(position) 
-                      ? 'bg-focus-purple scale-110' 
-                      : 'bg-slate-200 hover:bg-slate-300'}
-                  `}
-                  onClick={() => handleTileClick(position)}
-                >
-                </div>
-              ))}
-            </div>
+            {renderGrid()}
             
             <div className="mt-4">
               <p className="text-sm text-muted-foreground">
                 {isShowingPattern 
                   ? "패턴을 기억하세요..."  
-                  : patternCompleted 
-                    ? "패턴 완성!" 
-                    : `${playerPattern.length}/${pattern.length} 선택됨`
+                  : `${selectedCells.length}/${patternLength} 선택됨`
                 }
               </p>
             </div>
@@ -249,13 +283,19 @@ export function WorkingMemoryGame({ onComplete, isBaseline = false }: WorkingMem
 
         {gameState === 'waitingForNext' && !isPaused && (
           <div className="text-center space-y-4">
-            <p className="text-lg">패턴을 성공적으로 완성했습니다!</p>
+            <p className="text-lg">패턴 입력 완료!</p>
             <p>
-              현재 점수: {score} | 라운드: {round + 1}/{MAX_ROUNDS}
+              맞은 갯수: {correctSelections} | 틀린 갯수: {incorrectSelections} | 점수: {score}
             </p>
-            <Button onClick={handleNextRound}>
-              다음 라운드로 진행
-            </Button>
+            {round < MAX_ROUNDS - 1 ? (
+              <Button onClick={handleNextRound}>
+                다음 라운드로 진행
+              </Button>
+            ) : (
+              <Button onClick={finishGame}>
+                결과 확인하기
+              </Button>
+            )}
           </div>
         )}
 
