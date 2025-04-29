@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { MainLayout } from "@/layouts/MainLayout";
@@ -15,8 +15,9 @@ export default function CognitiveBaseline() {
   const { saveGameResult, startGame } = useGame();
   const [gameState, setGameState] = useState<'intro' | 'playing' | 'complete'>('intro');
   const [currentGameIndex, setCurrentGameIndex] = useState(0);
+  const processingGameComplete = useRef<boolean>(false);
   
-  // List of games for baseline in fixed order - removed WM and ATT
+  // List of games for baseline in fixed order
   const gameOrder: GameType[] = ['RT', 'PS', 'DM', 'WM2'];
   const currentGame = gameOrder[currentGameIndex];
   
@@ -34,31 +35,68 @@ export default function CognitiveBaseline() {
     // Save game result as baseline
     saveGameResult(metrics, true);
     
+    // Prevent multiple calls
+    if (processingGameComplete.current) return;
+    processingGameComplete.current = true;
+    
     // Check if we need to move to the next game
     if (currentGameIndex < gameOrder.length - 1) {
       // Calculate next index
       const nextIndex = currentGameIndex + 1;
       
-      // Update the state with the new index
-      setCurrentGameIndex(nextIndex);
+      // Log for debugging
+      console.log(`Moving to next game: ${gameOrder[nextIndex]} (index: ${nextIndex})`);
       
-      // Start the next game with the new index value
-      const nextGame = gameOrder[nextIndex];
-      console.log(`Moving to next game: ${nextGame} (index: ${nextIndex})`);
-      
-      // Start the next game in the context
-      // We use setTimeout to avoid state updates during rendering
+      // Reset the processing flag after a short delay
       setTimeout(() => {
-        startGame(nextGame);
-      }, 0);
+        processingGameComplete.current = false;
+        
+        // Update the state with the new index
+        setCurrentGameIndex(nextIndex);
+        
+        // Start the next game with the new index value
+        startGame(gameOrder[nextIndex]);
+      }, 300);
     } else {
       // All games completed
       setGameState('complete');
+      processingGameComplete.current = false;
     }
   };
   
   const handleFinish = () => {
     navigate('/dashboard');
+  };
+  
+  // Skip the current game and move to the next one
+  const handleSkipGame = () => {
+    // Prevent multiple calls
+    if (processingGameComplete.current) return;
+    processingGameComplete.current = true;
+    
+    // Check if we need to move to the next game
+    if (currentGameIndex < gameOrder.length - 1) {
+      // Calculate next index
+      const nextIndex = currentGameIndex + 1;
+      
+      // Log for debugging
+      console.log(`Skipping to next game: ${gameOrder[nextIndex]} (index: ${nextIndex})`);
+      
+      // Reset the processing flag after a short delay
+      setTimeout(() => {
+        processingGameComplete.current = false;
+        
+        // Update the state with the new index
+        setCurrentGameIndex(nextIndex);
+        
+        // Start the next game with the new index value
+        startGame(gameOrder[nextIndex]);
+      }, 300);
+    } else {
+      // All games completed
+      setGameState('complete');
+      processingGameComplete.current = false;
+    }
   };
   
   const renderCurrentGame = () => {

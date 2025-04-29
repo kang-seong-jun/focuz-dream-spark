@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ArrowRight } from "lucide-react";
 
 interface DecisionMakingGameProps {
   onComplete: (metrics: Record<string, any>) => void;
@@ -30,6 +31,7 @@ export function DecisionMakingGame({ onComplete, isBaseline = false }: DecisionM
   
   // Refs for timers
   const feedbackTimer = useRef<number | null>(null);
+  const gameCompleted = useRef(false);
   
   // Constants - reduced trials from 30 to 10
   const TOTAL_TRIALS = 10;
@@ -68,6 +70,7 @@ export function DecisionMakingGame({ onComplete, isBaseline = false }: DecisionM
     setCorrectResponses(0);
     setIncorrectResponses(0);
     setResponseTimes([]);
+    gameCompleted.current = false;
     startNewTrial();
   };
   
@@ -87,7 +90,7 @@ export function DecisionMakingGame({ onComplete, isBaseline = false }: DecisionM
   
   // Handle user choice (left or right)
   const handleChoice = (choice: 'left' | 'right') => {
-    if (!currentTrial || gameState !== 'playing' || isPaused) return;
+    if (!currentTrial || gameState !== 'playing' || isPaused || gameCompleted.current) return;
     
     // Calculate response time
     const responseTime = Date.now() - (trialStartTime || Date.now());
@@ -129,6 +132,30 @@ export function DecisionMakingGame({ onComplete, isBaseline = false }: DecisionM
     }
   };
   
+  // Handle skipping the current game entirely
+  const handleSkip = () => {
+    // Clear any timers
+    if (feedbackTimer.current) {
+      clearTimeout(feedbackTimer.current);
+      feedbackTimer.current = null;
+    }
+    
+    // Set game as completed to prevent re-entry
+    gameCompleted.current = true;
+    
+    // Calculate default metrics (with lower score for skipping)
+    const defaultMetrics = {
+      decisionAccuracy: 0,
+      meanCorrectRT: 0,
+      score: 0, // Zero score for skipping
+    };
+    
+    // Complete the game with default metrics
+    setTimeout(() => {
+      onComplete(defaultMetrics);
+    }, 100);
+  };
+  
   // Finish the game
   const finishGame = () => {
     // Clear any timers
@@ -136,6 +163,9 @@ export function DecisionMakingGame({ onComplete, isBaseline = false }: DecisionM
       clearTimeout(feedbackTimer.current);
       feedbackTimer.current = null;
     }
+    
+    // Set game as completed to prevent re-entry
+    gameCompleted.current = true;
     
     setGameState('finished');
     
@@ -197,11 +227,21 @@ export function DecisionMakingGame({ onComplete, isBaseline = false }: DecisionM
     <Card className="w-full max-w-md mx-auto bg-white/95 backdrop-blur-sm shadow-lg border-0">
       <CardHeader className="border-b pb-3">
         <CardTitle className="text-center">더 많은 쪽 고르기</CardTitle>
-        <div className="absolute right-4 top-4">
+        <div className="absolute right-4 top-4 flex gap-2">
           {gameState !== 'instruction' && gameState !== 'finished' && (
-            <Button variant="outline" size="sm" onClick={togglePause}>
-              {isPaused ? "계속하기" : "일시정지"}
-            </Button>
+            <>
+              <Button variant="outline" size="sm" onClick={togglePause}>
+                {isPaused ? "계속하기" : "일시정지"}
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleSkip}
+                className="border-amber-500 text-amber-500 hover:bg-amber-50"
+              >
+                건너뛰기 <ArrowRight className="ml-1 w-4 h-4" />
+              </Button>
+            </>
           )}
         </div>
       </CardHeader>
@@ -210,7 +250,16 @@ export function DecisionMakingGame({ onComplete, isBaseline = false }: DecisionM
           <div className="text-center space-y-4">
             <p className="text-lg">좌우에 나타나는 두 상자 중 더 많은 점이 있는 쪽을 선택하세요.</p>
             <p>10번의 문제가 제시됩니다. 신속하고 정확하게 판단해주세요!</p>
-            <Button onClick={handleStart}>시작하기</Button>
+            <div className="flex gap-3 justify-center mt-4">
+              <Button onClick={handleStart}>시작하기</Button>
+              <Button 
+                variant="outline" 
+                onClick={handleSkip}
+                className="border-amber-500 text-amber-500 hover:bg-amber-50"
+              >
+                건너뛰기 <ArrowRight className="ml-1 w-4 h-4" />
+              </Button>
+            </div>
           </div>
         )}
 
@@ -249,13 +298,33 @@ export function DecisionMakingGame({ onComplete, isBaseline = false }: DecisionM
             <p className="mt-8 text-sm text-muted-foreground">
               더 많은 점이 있는 쪽을 클릭하세요
             </p>
+            
+            <div className="mt-4">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleSkip}
+                className="border-amber-500 text-amber-500 hover:bg-amber-50"
+              >
+                게임 건너뛰기 <ArrowRight className="ml-1 w-4 h-4" />
+              </Button>
+            </div>
           </div>
         )}
 
         {isPaused && (
           <div className="text-center space-y-4">
             <p className="text-xl">게임이 일시 정지되었습니다</p>
-            <Button onClick={togglePause}>계속하기</Button>
+            <div className="flex gap-3 justify-center">
+              <Button onClick={togglePause}>계속하기</Button>
+              <Button 
+                variant="outline" 
+                onClick={handleSkip}
+                className="border-amber-500 text-amber-500 hover:bg-amber-50"
+              >
+                게임 건너뛰기 <ArrowRight className="ml-1 w-4 h-4" />
+              </Button>
+            </div>
           </div>
         )}
 
