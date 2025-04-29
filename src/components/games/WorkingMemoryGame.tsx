@@ -25,11 +25,9 @@ export function WorkingMemoryGame({ onComplete, isBaseline = false }: WorkingMem
   
   // Game settings based on round
   const [gridSize, setGridSize] = useState(4); // 4x4 grid for first round
-  const [patternLength, setPatternLength] = useState(6); // 6 cells for first round
-  
-  // Game settings
+  const [patternLength, setPatternLength] = useState(4); // 4 cells for first round
+  const [patternShowTime, setPatternShowTime] = useState(1000); // 1초로 시작
   const MAX_ROUNDS = 3;
-  const PATTERN_SHOW_TIME = 600; // ms - all cells shown at once for 0.6 seconds
   
   // Refs for timers
   const timerRef = useRef<number | null>(null);
@@ -41,7 +39,8 @@ export function WorkingMemoryGame({ onComplete, isBaseline = false }: WorkingMem
     setScore(0);
     setRound(0);
     setGridSize(4); // 4x4 grid for first round
-    setPatternLength(6); // 6 cells for first round
+    setPatternLength(4); // 4 cells for first round
+    setPatternShowTime(1000); // 1초로 시작
     setPatternCompleted(false);
     generatePattern();
   };
@@ -86,10 +85,10 @@ export function WorkingMemoryGame({ onComplete, isBaseline = false }: WorkingMem
     // Show the pattern
     setIsShowingPattern(true);
     
-    // Hide the pattern after PATTERN_SHOW_TIME
+    // Hide the pattern after patternShowTime
     timerRef.current = window.setTimeout(() => {
       setIsShowingPattern(false);
-    }, PATTERN_SHOW_TIME);
+    }, patternShowTime);
   };
   
   // Handle cell click
@@ -127,15 +126,17 @@ export function WorkingMemoryGame({ onComplete, isBaseline = false }: WorkingMem
     const nextRound = round + 1;
     setRound(nextRound);
 
-    // Update grid size and pattern length based on round
+    // Update grid size, pattern length, and show time based on round
     if (nextRound === 1) {
-      // Round 2: 5x5 grid, 10 cells
+      // Round 2: 5x5 grid, 6 cells, 1초
       setGridSize(5);
-      setPatternLength(10);
+      setPatternLength(6);
+      setPatternShowTime(1000);
     } else if (nextRound === 2) {
-      // Round 3: 5x5 grid, 10 cells
-      setGridSize(5);
-      setPatternLength(10);
+      // Round 3: 6x6 grid, 8 cells, 1.2초
+      setGridSize(6);
+      setPatternLength(8);
+      setPatternShowTime(1200);
     }
 
     setGameState('playing');
@@ -159,10 +160,10 @@ export function WorkingMemoryGame({ onComplete, isBaseline = false }: WorkingMem
     const accuracy = totalSelections > 0 ? correctSelections / totalSelections : 0;
     
     // Determine working memory span based on the highest pattern length completed
-    let workingMemorySpan = 6; // Default to first round pattern length
+    let workingMemorySpan = 4; // Default to first round pattern length
     
     if (round >= 1) {
-      workingMemorySpan = 10; // Second and third round pattern length
+      workingMemorySpan = 6; // Second round pattern length
     }
     
     const metrics = {
