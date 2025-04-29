@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -127,25 +126,20 @@ export function WorkingMemoryGame({ onComplete, isBaseline = false }: WorkingMem
   const handleNextRound = () => {
     const nextRound = round + 1;
     setRound(nextRound);
-    
+
     // Update grid size and pattern length based on round
     if (nextRound === 1) {
       // Round 2: 5x5 grid, 10 cells
       setGridSize(5);
       setPatternLength(10);
     } else if (nextRound === 2) {
-      // Round 3: 5x5 grid, 15 cells (or keep the same)
+      // Round 3: 5x5 grid, 10 cells
       setGridSize(5);
-      setPatternLength(10); // Keeping 10 for the third round too
+      setPatternLength(10);
     }
-    
+
     setGameState('playing');
     setPatternCompleted(false);
-    
-    // Allow some time for UI update before generating new pattern
-    setTimeout(() => {
-      generatePattern();
-    }, 100);
   };
   
   // Finish the game
@@ -206,6 +200,14 @@ export function WorkingMemoryGame({ onComplete, isBaseline = false }: WorkingMem
       finishGame();
     }
   }, [round, patternCompleted]);
+  
+  // useEffect로 gridSize, patternLength, gameState가 바뀔 때 패턴 생성
+  useEffect(() => {
+    if (gameState === 'playing' && !isShowingPattern && !patternCompleted) {
+      generatePattern();
+    }
+    // eslint-disable-next-line
+  }, [gridSize, patternLength, gameState]);
   
   // Generate grid cells
   const renderGrid = () => {
