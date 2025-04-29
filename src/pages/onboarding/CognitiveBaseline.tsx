@@ -5,9 +5,7 @@ import { Button } from "@/components/ui/button";
 import { MainLayout } from "@/layouts/MainLayout";
 import { useGame } from "@/context/GameContext";
 import { GameType, GAME_TYPES } from "@/types";
-import { DigitSpanGame } from "@/components/games/DigitSpanGame";
 import { ReactionTimeGame } from "@/components/games/ReactionTimeGame";
-import { AttentionGame } from "@/components/games/AttentionGame";
 import { ProcessingSpeedGame } from "@/components/games/ProcessingSpeedGame";
 import { DecisionMakingGame } from "@/components/games/DecisionMakingGame";
 import { WorkingMemoryGame } from "@/components/games/WorkingMemoryGame";
@@ -18,8 +16,8 @@ export default function CognitiveBaseline() {
   const [gameState, setGameState] = useState<'intro' | 'playing' | 'complete'>('intro');
   const [currentGameIndex, setCurrentGameIndex] = useState(0);
   
-  // List of games for baseline in fixed order
-  const gameOrder: GameType[] = ['WM', 'RT', 'ATT', 'PS', 'DM', 'WM2'];
+  // List of games for baseline in fixed order - removed WM and ATT
+  const gameOrder: GameType[] = ['RT', 'PS', 'DM', 'WM2'];
   const currentGame = gameOrder[currentGameIndex];
   
   // Debug logs to track progression between games
@@ -59,23 +57,9 @@ export default function CognitiveBaseline() {
   
   const renderCurrentGame = () => {
     switch(currentGame) {
-      case 'WM':
-        return (
-          <DigitSpanGame 
-            onComplete={handleGameComplete} 
-            isBaseline={true} 
-          />
-        );
       case 'RT':
         return (
           <ReactionTimeGame 
-            onComplete={handleGameComplete} 
-            isBaseline={true} 
-          />
-        );
-      case 'ATT':
-        return (
-          <AttentionGame 
             onComplete={handleGameComplete} 
             isBaseline={true} 
           />
@@ -114,8 +98,8 @@ export default function CognitiveBaseline() {
             <h1 className="text-2xl font-bold text-center">현재 인지 능력 측정하기</h1>
             
             <p className="text-center">
-              이제 당신의 현재 인지 능력을 파악하기 위한 6가지 게임을 진행합니다. 
-              각 게임은 평소 플레이하는 것과 동일한 버전이며, 완료까지 약 15~20분 이상 소요될 수 있습니다.
+              이제 당신의 현재 인지 능력을 파악하기 위한 4가지 게임을 진행합니다. 
+              각 게임은 평소 플레이하는 것과 동일한 버전이며, 완료까지 약 10~15분 이상 소요될 수 있습니다.
             </p>
             
             <p className="text-center font-medium">
@@ -136,7 +120,7 @@ export default function CognitiveBaseline() {
           <div className="w-full max-w-md">
             <div className="mb-4 text-center">
               <p className="text-sm text-muted-foreground">
-                초기 능력 측정 ({currentGameIndex + 1}/6): {GAME_TYPES[currentGame].fullName}
+                초기 능력 측정 ({currentGameIndex + 1}/4): {GAME_TYPES[currentGame].fullName}
               </p>
             </div>
             
