@@ -34,10 +34,11 @@ export function useDigitSpanGame({ onComplete, isBaseline = false }: UseDigitSpa
   // Refs
   const timerRef = useRef<number | null>(null);
 
-  // Constants
+  // Constants - updated timing
   const MAX_TOTAL_ROUNDS = 3; // Total 3 rounds regardless of correctness
-  const NUMBER_DURATION = 600; // Even faster number display (was 700ms)
-  const PAUSE_DURATION = 250; // Shorter pause between numbers (was 300ms)
+  const NUMBER_DURATION = 150; // 0.15 second number display
+  const PAUSE_DURATION = 150; // 0.15 second pause between numbers
+  const FINAL_PAUSE_DURATION = 300; // 0.3 second pause after last number
 
   // Start the game
   const startGame = () => {
@@ -62,6 +63,7 @@ export function useDigitSpanGame({ onComplete, isBaseline = false }: UseDigitSpa
     setFeedback("");
     setShowFeedback(false);
 
+    // Create a sequence with exactly the right number of digits for this round
     const newSequence: number[] = [];
     for (let i = 0; i < sequenceLength; i++) {
       newSequence.push(Math.floor(Math.random() * 9) + 1); // Numbers 1-9
@@ -77,18 +79,20 @@ export function useDigitSpanGame({ onComplete, isBaseline = false }: UseDigitSpa
       // Reset animation flag after a short delay
       setTimeout(() => {
         setNumberChanged(false);
-      }, 200);
+      }, 100);
       
       i++;
 
       if (i === newSequence.length) {
         clearInterval(timerRef.current);
         timerRef.current = null;
+        
+        // Added longer delay before input phase
         setTimeout(() => {
           setDisplayNumber(null);
           setPrevDisplayNumber(null);
           setIsGenerating(false);
-        }, PAUSE_DURATION);
+        }, FINAL_PAUSE_DURATION);
       }
     }, NUMBER_DURATION + PAUSE_DURATION);
   };
@@ -98,6 +102,13 @@ export function useDigitSpanGame({ onComplete, isBaseline = false }: UseDigitSpa
     if (isGenerating || isPaused) return;
 
     setInputSequence([...inputSequence, number]);
+  };
+
+  // Remove last digit from input
+  const handleRemoveLastDigit = () => {
+    if (isGenerating || isPaused || inputSequence.length === 0) return;
+    
+    setInputSequence(inputSequence.slice(0, -1));
   };
 
   // Submit the sequence
@@ -222,6 +233,7 @@ export function useDigitSpanGame({ onComplete, isBaseline = false }: UseDigitSpa
     // Actions
     startGame,
     handleInput,
+    handleRemoveLastDigit,
     handleSubmit,
     togglePause,
   };

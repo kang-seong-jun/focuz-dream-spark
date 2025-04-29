@@ -29,6 +29,7 @@ export function DigitSpanGame({ onComplete, isBaseline = false }: DigitSpanGameP
     inputSequence,
     startGame,
     handleInput,
+    handleRemoveLastDigit,
     handleSubmit,
     togglePause,
   } = useDigitSpanGame({ onComplete, isBaseline });
@@ -59,6 +60,7 @@ export function DigitSpanGame({ onComplete, isBaseline = false }: DigitSpanGameP
             feedback={feedback}
             inputSequence={inputSequence}
             onInput={handleInput}
+            onRemoveLastDigit={handleRemoveLastDigit}
             onSubmit={handleSubmit}
           />
         )}

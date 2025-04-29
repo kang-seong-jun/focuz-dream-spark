@@ -1,6 +1,7 @@
 
 import React from "react";
 import { Button } from "@/components/ui/button";
+import { X } from "lucide-react";
 
 interface InstructionScreenProps {
   onStart: () => void;
@@ -39,6 +40,7 @@ interface GameScreenProps {
   feedback: string;
   inputSequence: number[];
   onInput: (number: number) => void;
+  onRemoveLastDigit: () => void;
   onSubmit: () => void;
 }
 
@@ -52,6 +54,7 @@ export function GameScreen({
   feedback,
   inputSequence,
   onInput,
+  onRemoveLastDigit,
   onSubmit,
 }: GameScreenProps) {
   return (
@@ -81,29 +84,51 @@ export function GameScreen({
       )}
 
       {!isGenerating && displayNumber === null && (
-        <div className="grid grid-cols-3 gap-2 mt-6">
-          {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(number => (
-            <Button
-              key={number}
-              onClick={() => onInput(number)}
+        <div className="w-full max-w-xs">
+          <div className="grid grid-cols-3 gap-2 mt-6">
+            {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(number => (
+              <Button
+                key={number}
+                onClick={() => onInput(number)}
+                className="w-16 h-12"
+              >
+                {number}
+              </Button>
+            ))}
+            <Button 
+              onClick={onRemoveLastDigit} 
+              className="w-16 h-12" 
+              variant="outline"
+              disabled={inputSequence.length === 0}
+            >
+              <X size={18} />
+            </Button>
+            <Button 
+              key={0}
+              onClick={() => onInput(0)} 
               className="w-16 h-12"
             >
-              {number}
+              0
             </Button>
-          ))}
-          <Button onClick={onSubmit} className="col-span-3 w-full">
-            확인
-          </Button>
+            <Button 
+              onClick={onSubmit} 
+              className="w-16 h-12" 
+              variant="secondary"
+              disabled={inputSequence.length === 0}
+            >
+              확인
+            </Button>
+          </div>
+
+          <div className="mt-4 text-center">
+            <p className="text-sm text-muted-foreground">
+              {inputSequence.length > 0
+                ? `입력한 숫자: ${inputSequence.join(" ")}`
+                : "숫자를 입력하세요..."}
+            </p>
+          </div>
         </div>
       )}
-
-      <div className="mt-4">
-        <p className="text-sm text-muted-foreground">
-          {inputSequence.length > 0
-            ? `입력한 숫자: ${inputSequence.join(" ")}`
-            : "숫자를 입력하세요..."}
-        </p>
-      </div>
     </div>
   );
 }
