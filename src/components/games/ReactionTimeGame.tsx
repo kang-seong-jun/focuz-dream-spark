@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -169,29 +170,30 @@ export function ReactionTimeGame({ onComplete, isBaseline = false }: ReactionTim
     
     // Calculate metrics
     const validReactionTimes = reactionTimes.filter(rt => rt >= 100 && rt <= 1500);
-    const meanReactionTime = validReactionTimes.length > 0 
+    const averageReactionTime = validReactionTimes.length > 0 
       ? validReactionTimes.reduce((sum, rt) => sum + rt, 0) / validReactionTimes.length 
       : 0;
     
     // Calculate standard deviation
     const variance = validReactionTimes.length > 0
-      ? validReactionTimes.reduce((sum, rt) => sum + Math.pow(rt - meanReactionTime, 2), 0) / validReactionTimes.length
+      ? validReactionTimes.reduce((sum, rt) => sum + Math.pow(rt - averageReactionTime, 2), 0) / validReactionTimes.length
       : 0;
     const stdDeviation = Math.sqrt(variance);
     
     // Calculate other metrics
     const totalTargetTrials = targetTrials;
     const omissionErrorRate = totalTargetTrials > 0 ? omissionErrors / totalTargetTrials : 0;
-    const score = calculateScore(meanReactionTime, commissionErrors, omissionErrors);
+    const score = calculateScore(averageReactionTime, commissionErrors, omissionErrors);
     
     const metrics = {
-      meanReactionTime,
+      averageReactionTime,
       stdDeviation,
       commissionErrors,
       omissionErrors,
       omissionErrorRate,
       trials: trialCount,
       score,
+      meanReactionTime: averageReactionTime, // For compatibility with existing code
     };
     
     onComplete(metrics);

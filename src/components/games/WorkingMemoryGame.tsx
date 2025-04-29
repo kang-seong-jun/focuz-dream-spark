@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -162,7 +163,13 @@ export function WorkingMemoryGame({ onComplete, isBaseline = false }: WorkingMem
     // Calculate metrics
     const totalSelections = correctSelections + incorrectSelections;
     const accuracy = totalSelections > 0 ? correctSelections / totalSelections : 0;
-    const workingMemorySpan = Math.max(6, 10); // Based on the max pattern length completed
+    
+    // Determine working memory span based on the highest pattern length completed
+    let workingMemorySpan = 6; // Default to first round pattern length
+    
+    if (round >= 1) {
+      workingMemorySpan = 10; // Second and third round pattern length
+    }
     
     const metrics = {
       workingMemorySpan,

@@ -124,6 +124,7 @@ export function ProcessingSpeedGame({ onComplete, isBaseline = false }: Processi
     // Calculate metrics
     const totalResponses = correctResponses + incorrectResponses;
     const accuracy = totalResponses > 0 ? correctResponses / totalResponses : 0;
+    const itemsProcessed = totalResponses;
     
     // Calculate average time per response
     let timePerResponse = 0;
@@ -141,6 +142,7 @@ export function ProcessingSpeedGame({ onComplete, isBaseline = false }: Processi
     const metrics = {
       correctResponses,
       accuracy,
+      itemsProcessed,
       timePerResponse,
       score,
     };
