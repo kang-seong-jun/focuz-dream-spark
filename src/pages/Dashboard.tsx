@@ -1,4 +1,3 @@
-
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -57,6 +56,9 @@ export default function Dashboard() {
           case 'RT':
             // Lower is better (reaction time)
             score = Math.max(0, 100 - (result.metrics.meanReactionTime / 5));
+            break;
+          case 'PS':
+            score = typeof result.metrics.score === 'number' ? result.metrics.score : 0;
             break;
           default:
             // For other games, assuming metrics are already 0-100 or 0-1
