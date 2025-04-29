@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -82,27 +81,22 @@ export default function CognitiveBaseline() {
 
   // Calculate a normalized score (0-100) for each game type based on metrics
   const getResultScore = (gameType: GameType, metrics: Record<string, any>): number => {
+    if (typeof metrics.score === 'number') {
+      return Math.round(metrics.score);
+    }
+    // 이하 기존 로직 백업
     switch (gameType) {
       case 'RT':
-        // Lower reaction time is better
         const reactionTime = metrics.averageReactionTime || 1000;
-        // 150ms is excellent (100%), 1000ms is poor (0%)
         return Math.max(0, Math.min(100, 100 - ((reactionTime - 150) / 850) * 100));
-      
       case 'PS':
-        // Higher processed items is better
         const processedItems = metrics.itemsProcessed || 0;
-        // 25+ items is excellent (100%), 0 is poor (0%)
         return Math.min(100, (processedItems / 25) * 100);
-      
       case 'WM2':
-        // Higher workingMemorySpan is better
         const memorySpan = metrics.workingMemorySpan || 0;
-        // 10 is excellent (100%), 0 is poor (0%)
         return Math.min(100, (memorySpan / 10) * 100);
-      
       default:
-        return 50; // Default score
+        return 50;
     }
   };
   
