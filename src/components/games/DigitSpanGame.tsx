@@ -14,10 +14,11 @@ export function DigitSpanGame({ onComplete, isBaseline = false }: DigitSpanGameP
   const [gameState, setGameState] = useState<'instruction' | 'showing' | 'input' | 'feedback' | 'finished'>('instruction');
   const [currentSequence, setCurrentSequence] = useState<number[]>([]);
   const [userInput, setUserInput] = useState<number[]>([]);
-  const [sequenceLength] = useState(7); // Fixed at 7 digits to make the game shorter
+  const [sequenceLength, setSequenceLength] = useState(7); // Start with 7 digits
   const [currentDigitIndex, setCurrentDigitIndex] = useState(0);
   const [failuresAtCurrentLength, setFailuresAtCurrentLength] = useState(0);
   const [correctSequences, setCorrectSequences] = useState(0);
+  const [incorrectSequences, setIncorrectSequences] = useState(0);
   const [totalAttempts, setTotalAttempts] = useState(0);
   const [startTime, setStartTime] = useState<number | null>(null);
   const [totalResponseTime, setTotalResponseTime] = useState(0);
@@ -25,8 +26,8 @@ export function DigitSpanGame({ onComplete, isBaseline = false }: DigitSpanGameP
   
   const [isPaused, setIsPaused] = useState(false);
   
-  // For a real app, we might want to have a limit for how many attempts
   const MAX_FAILURES = 2;
+  const MAX_CORRECT_PER_LEVEL = 1; // Number of correct sequences before increasing difficulty
 
   // Generate a random sequence of digits
   const generateSequence = useCallback((length: number): number[] => {
@@ -94,18 +95,24 @@ export function DigitSpanGame({ onComplete, isBaseline = false }: DigitSpanGameP
     }
 
     if (isCorrect) {
-      setCorrectSequences(prev => prev + 1);
+      const newCorrectSequences = correctSequences + 1;
+      setCorrectSequences(newCorrectSequences);
       setGameState('feedback');
       toast({
         title: "정답입니다!",
         description: "다음 단계로 넘어갑니다.",
       });
       
-      // We're keeping sequence length constant, so just reset failures
+      // Reset failures
       setFailuresAtCurrentLength(0);
       
-      // If they've done enough correct sequences (e.g., 3), finish the game
-      if (correctSequences >= 2) { // After 3 correct answers (this one is the 3rd)
+      // If they've done enough correct sequences at this length, increase difficulty
+      if (newCorrectSequences % MAX_CORRECT_PER_LEVEL === 0 && newCorrectSequences > 0 && !isBaseline) {
+        setSequenceLength(prev => Math.min(prev + 1, 9)); // Increase length up to max of 9
+      }
+      
+      // If they've done enough correct sequences overall, finish the game
+      if (newCorrectSequences + incorrectSequences >= 5) {
         finishGame();
       } else {
         // Start new trial after brief pause
@@ -114,6 +121,8 @@ export function DigitSpanGame({ onComplete, isBaseline = false }: DigitSpanGameP
         }, 1500);
       }
     } else {
+      const newIncorrectSequences = incorrectSequences + 1;
+      setIncorrectSequences(newIncorrectSequences);
       setGameState('feedback');
       toast({
         title: "틀렸습니다",
@@ -121,12 +130,12 @@ export function DigitSpanGame({ onComplete, isBaseline = false }: DigitSpanGameP
         variant: "destructive",
       });
       
-      // If they got it wrong, increment failure counter
+      // Increment failure counter
       const newFailures = failuresAtCurrentLength + 1;
       setFailuresAtCurrentLength(newFailures);
       
-      // If they've failed the maximum number of times, finish the game
-      if (newFailures >= MAX_FAILURES) {
+      // If they've reached max failures or enough total attempts, finish the game
+      if (newFailures >= MAX_FAILURES || (newCorrectSequences + newIncorrectSequences >= 5)) {
         finishGame();
       } else {
         // Otherwise try again with same length
@@ -144,12 +153,20 @@ export function DigitSpanGame({ onComplete, isBaseline = false }: DigitSpanGameP
     const metrics = {
       memorySpan: sequenceLength,
       correctSequences,
+      incorrectSequences,
       totalAttempts,
-      errorRate: totalAttempts > 0 ? 1 - (correctSequences / totalAttempts) : 0,
+      errorRate: totalAttempts > 0 ? incorrectSequences / totalAttempts : 0,
       avgTimePerSequence: correctSequences > 0 ? totalResponseTime / correctSequences : 0,
+      score: calculateScore(correctSequences, incorrectSequences),
     };
     
     onComplete(metrics);
+  };
+
+  // Calculate score based on correct and incorrect sequences
+  const calculateScore = (correct: number, incorrect: number) => {
+    // Simple scoring: 10 points per correct sequence, minus 5 points per incorrect
+    return Math.max(0, (correct * 10) - (incorrect * 5));
   };
 
   // Start the game
@@ -192,10 +209,10 @@ export function DigitSpanGame({ onComplete, isBaseline = false }: DigitSpanGameP
           <div className="text-center space-y-4">
             <p className="text-sm text-muted-foreground">숫자를 기억하세요</p>
             {currentDigitIndex < currentSequence.length ? (
-              <div className="relative h-24 flex items-center justify-center">
+              <div className="relative h-24 flex items-center justify-center overflow-hidden">
                 <div 
                   key={digitKey}
-                  className="text-6xl font-bold absolute transform transition-transform duration-300 animate-[slide-up_0.3s_ease-out]"
+                  className="text-6xl font-bold animate-slide-up absolute"
                 >
                   {currentSequence[currentDigitIndex]}
                 </div>

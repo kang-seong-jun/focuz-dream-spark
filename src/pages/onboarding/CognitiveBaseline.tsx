@@ -6,6 +6,11 @@ import { MainLayout } from "@/layouts/MainLayout";
 import { useGame } from "@/context/GameContext";
 import { GameType, GAME_TYPES } from "@/types";
 import { DigitSpanGame } from "@/components/games/DigitSpanGame";
+import { ReactionTimeGame } from "@/components/games/ReactionTimeGame";
+import { AttentionGame } from "@/components/games/AttentionGame";
+import { ProcessingSpeedGame } from "@/components/games/ProcessingSpeedGame";
+import { DecisionMakingGame } from "@/components/games/DecisionMakingGame";
+import { ExecutiveFunctionGame } from "@/components/games/ExecutiveFunction";
 
 export default function CognitiveBaseline() {
   const navigate = useNavigate();
@@ -35,6 +40,55 @@ export default function CognitiveBaseline() {
   
   const handleFinish = () => {
     navigate('/dashboard');
+  };
+  
+  const renderCurrentGame = () => {
+    switch(currentGame) {
+      case 'WM':
+        return (
+          <DigitSpanGame 
+            onComplete={handleGameComplete} 
+            isBaseline={true} 
+          />
+        );
+      case 'RT':
+        return (
+          <ReactionTimeGame 
+            onComplete={handleGameComplete} 
+            isBaseline={true} 
+          />
+        );
+      case 'ATT':
+        return (
+          <AttentionGame 
+            onComplete={handleGameComplete} 
+            isBaseline={true} 
+          />
+        );
+      case 'PS':
+        return (
+          <ProcessingSpeedGame 
+            onComplete={handleGameComplete} 
+            isBaseline={true} 
+          />
+        );
+      case 'DM':
+        return (
+          <DecisionMakingGame 
+            onComplete={handleGameComplete} 
+            isBaseline={true} 
+          />
+        );
+      case 'EF':
+        return (
+          <ExecutiveFunctionGame 
+            onComplete={handleGameComplete} 
+            isBaseline={true} 
+          />
+        );
+      default:
+        return null;
+    }
   };
   
   return (
@@ -71,15 +125,7 @@ export default function CognitiveBaseline() {
               </p>
             </div>
             
-            {/* This is a placeholder - in reality, you'd conditionally render the appropriate game component */}
-            {currentGame === 'WM' && (
-              <DigitSpanGame 
-                onComplete={handleGameComplete} 
-                isBaseline={true} 
-              />
-            )}
-            
-            {/* In a real implementation, you'd add similar conditionals for other game types */}
+            {renderCurrentGame()}
           </div>
         )}
         
