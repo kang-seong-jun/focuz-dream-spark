@@ -118,11 +118,12 @@ export function DecisionMakingGame({ onComplete, isBaseline = false }: DecisionM
   
   // Move to next trial or finish game
   const moveToNextTrial = () => {
-    setTrialNumber(prev => prev + 1);
+    const nextTrialNumber = trialNumber + 1;
     
-    if (trialNumber >= TOTAL_TRIALS - 1) {
+    if (nextTrialNumber >= TOTAL_TRIALS) {
       finishGame();
     } else {
+      setTrialNumber(nextTrialNumber);
       setGameState('playing');
       startNewTrial();
     }
@@ -155,7 +156,10 @@ export function DecisionMakingGame({ onComplete, isBaseline = false }: DecisionM
       score,
     };
     
-    onComplete(metrics);
+    // Use setTimeout to avoid state updates during render
+    setTimeout(() => {
+      onComplete(metrics);
+    }, 100);
   };
   
   // Toggle pause state

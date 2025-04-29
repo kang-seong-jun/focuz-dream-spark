@@ -34,19 +34,25 @@ export default function CognitiveBaseline() {
     // Save game result as baseline
     saveGameResult(metrics, true);
     
-    // Move to next game or complete
+    // Check if we need to move to the next game
     if (currentGameIndex < gameOrder.length - 1) {
-      // First update the index
+      // Calculate next index
       const nextIndex = currentGameIndex + 1;
+      
+      // Update the state with the new index
       setCurrentGameIndex(nextIndex);
       
-      // Then start the next game using the updated index
+      // Start the next game with the new index value
       const nextGame = gameOrder[nextIndex];
       console.log(`Moving to next game: ${nextGame} (index: ${nextIndex})`);
       
       // Start the next game in the context
-      startGame(nextGame);
+      // We use setTimeout to avoid state updates during rendering
+      setTimeout(() => {
+        startGame(nextGame);
+      }, 0);
     } else {
+      // All games completed
       setGameState('complete');
     }
   };
