@@ -157,12 +157,11 @@ export function ProcessingSpeedGame({ onComplete, isBaseline = false }: Processi
   // Calculate score
   const calculateScore = (correct: number, accuracy: number) => {
     // Base score is number of correct responses (capped at 100)
-    let baseScore = Math.min(100, correct * 2);
-    
+    let baseScore = Math.min(100, Math.max(0, correct * 2));
     // Apply accuracy bonus (up to 20% extra)
-    const accuracyBonus = accuracy * 20;
-    
-    return Math.round(baseScore + accuracyBonus);
+    const accuracyBonus = Math.max(0, accuracy) * 20;
+    const score = baseScore + accuracyBonus;
+    return isNaN(score) ? 0 : Math.round(score);
   };
   
   // Effects for pause/resume

@@ -81,8 +81,8 @@ export default function CognitiveBaseline() {
 
   // Calculate a normalized score (0-100) for each game type based on metrics
   const getResultScore = (gameType: GameType, metrics: Record<string, any>): number => {
-    if (typeof metrics.score === 'number') {
-      return Math.round(metrics.score);
+    if (typeof metrics.score === 'number' && !isNaN(metrics.score) && metrics.score !== null) {
+      return Math.max(0, Math.round(metrics.score));
     }
     // 이하 기존 로직 백업
     switch (gameType) {
