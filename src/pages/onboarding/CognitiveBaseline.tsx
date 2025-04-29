@@ -1,5 +1,4 @@
-import React from "react";
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { MainLayout } from "@/layouts/MainLayout";
@@ -38,7 +37,6 @@ export default function CognitiveBaseline() {
   }, [currentGameIndex, currentGame]);
   
   const handleStartBaseline = () => {
-    startGame(currentGame); // Set the current game in context
     setGameState('playing');
   };
   
@@ -188,6 +186,14 @@ export default function CognitiveBaseline() {
       </div>
     );
   };
+  
+  // 게임 시작 타이밍을 useEffect로 통일
+  useEffect(() => {
+    if (gameState === 'playing') {
+      startGame(currentGame);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameState, currentGame]);
   
   return (
     <MainLayout withNavigation={false}>
