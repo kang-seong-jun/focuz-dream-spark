@@ -95,8 +95,8 @@ export default function CognitiveBaseline() {
         return Math.min(100, Math.round(baseScore + speedBonus + accuracyBonus));
       }
       case 'WM2': {
-        const memorySpan = metrics.workingMemorySpan || 0;
-        return Math.min(100, (memorySpan / 10) * 100);
+        // 패턴 기억 점수는 이미 게임 컴포넌트에서 계산되어 전달됨
+        return metrics.score || 0;
       }
       default:
         return 50;

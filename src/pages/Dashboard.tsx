@@ -51,9 +51,11 @@ export default function Dashboard() {
         switch (type) {
           case 'WM':
           case 'WM2':
-            // 패턴 기억 점수: 패턴 길이 10이 100점
-            const memorySpan = result.metrics.workingMemorySpan || 0;
-            score = Math.min(100, Math.round((memorySpan / 10) * 100));
+            // 패턴 기억 점수: 각 라운드별 점수 합계
+            // 1라운드(4개): 20점 + 속도보너스 10점
+            // 2라운드(6개): 30점 + 속도보너스 10점
+            // 3라운드(8개): 40점 + 속도보너스 10점
+            score = result.metrics.score || 0;
             break;
           case 'RT':
             // 반응속도 점수: 150ms가 100점, 1000ms가 0점
