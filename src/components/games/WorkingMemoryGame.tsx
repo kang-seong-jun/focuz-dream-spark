@@ -13,6 +13,7 @@ export function WorkingMemoryGame({ onComplete, isBaseline = false }: WorkingMem
   const [gameState, setGameState] = useState<'instruction' | 'playing' | 'waitingForNext' | 'finished'>('instruction');
   const [isPaused, setIsPaused] = useState(false);
   const [score, setScore] = useState(0);
+  const [previousScores, setPreviousScores] = useState<number[]>([]);
   const [round, setRound] = useState(0);
   const [isShowingPattern, setIsShowingPattern] = useState(false);
   const [patternCompleted, setPatternCompleted] = useState(false);
@@ -30,7 +31,8 @@ export function WorkingMemoryGame({ onComplete, isBaseline = false }: WorkingMem
   
   // Game settings
   const MAX_ROUNDS = 3;
-  const PATTERN_SHOW_TIME = 1000; // ms
+  const PATTERN_SHOW_TIME = 1500; // 1.5 seconds to show pattern
+  const SPEED_BONUS_THRESHOLD = 1000; // 1 second per pattern for speed bonus
   
   // Refs for timers
   const timerRef = useRef<number | null>(null);
@@ -41,8 +43,8 @@ export function WorkingMemoryGame({ onComplete, isBaseline = false }: WorkingMem
     setGameState('playing');
     setScore(0);
     setRound(0);
-    setGridSize(4);
-    setPatternLength(4); // 1라운드: 4개
+    setGridSize(4); // 4x4 grid for first round
+    setPatternLength(4); // 4 patterns for first round
     setPatternCompleted(false);
     generatePattern();
   };
@@ -133,21 +135,18 @@ export function WorkingMemoryGame({ onComplete, isBaseline = false }: WorkingMem
   
   // Calculate score for a single round
   const calculateRoundScore = (roundIndex: number, correctCount: number, startTime: number | null) => {
-    // Base score per correct cell (5 points each)
+    // Base score: 5 points per correct pattern
     const baseScore = correctCount * 5;
     
-    // Speed bonus (up to 10 points)
+    // Speed bonus calculation (up to 10 points total across all rounds)
     let speedBonus = 0;
     if (startTime !== null) {
       const responseTime = Date.now() - startTime;
-      const maxTime = patternLength * 1000; // 1 second per cell
-      const minTime = patternLength * 500;  // 0.5 second per cell
+      const maxTime = patternLength * SPEED_BONUS_THRESHOLD; // 1 second per pattern
       
-      if (responseTime <= minTime) {
-        speedBonus = 10; // Maximum bonus
-      } else if (responseTime < maxTime) {
-        // Linear scale from 10 to 0 points
-        speedBonus = Math.round((maxTime - responseTime) / (maxTime - minTime) * 10);
+      if (responseTime <= maxTime) {
+        // Calculate speed bonus based on response time
+        speedBonus = Math.round((maxTime - responseTime) / maxTime * (10 / MAX_ROUNDS));
       }
     }
     
@@ -157,15 +156,16 @@ export function WorkingMemoryGame({ onComplete, isBaseline = false }: WorkingMem
   // Handle proceeding to next round
   const handleNextRound = () => {
     const nextRound = round + 1;
+    setPreviousScores(prev => [...prev, score]);
     setRound(nextRound);
     
     // Update grid size and pattern length based on round
     if (nextRound === 1) {
-      // Round 2: 5x5 grid, 6 cells
+      // Round 2: 5x5 grid, 6 patterns
       setGridSize(5);
       setPatternLength(6);
     } else if (nextRound === 2) {
-      // Round 3: 6x6 grid, 8 cells
+      // Round 3: 6x6 grid, 8 patterns
       setGridSize(6);
       setPatternLength(8);
     }
@@ -188,14 +188,13 @@ export function WorkingMemoryGame({ onComplete, isBaseline = false }: WorkingMem
     
     setGameState('finished');
     
-    // Calculate metrics
+    // Calculate final metrics
     const totalSelections = correctSelections + incorrectSelections;
     const accuracy = totalSelections > 0 ? correctSelections / totalSelections : 0;
     
     const metrics = {
-      workingMemorySpan: patternLength,
+      patternScore: score,
       accuracy,
-      score,
       totalRounds: round + 1,
       correctSelections,
       incorrectSelections,
@@ -303,7 +302,12 @@ export function WorkingMemoryGame({ onComplete, isBaseline = false }: WorkingMem
         {gameState === 'instruction' && (
           <div className="text-center space-y-4">
             <p className="text-lg">화면에 잠시 표시되는 격자 패턴을 기억한 후, 같은 위치를 클릭하세요.</p>
-            <p>총 3라운드로 진행되며, 라운드마다 기억해야 할 패턴이 더 복잡해집니다.</p>
+            <div className="space-y-2 text-sm text-muted-foreground">
+              <p>1라운드: 4×4 격자에서 4개 패턴</p>
+              <p>2라운드: 5×5 격자에서 6개 패턴</p>
+              <p>3라운드: 6×6 격자에서 8개 패턴</p>
+              <p>각 패턴 당 5점, 반응 속도에 따라 최대 10점의 보너스 점수가 주어집니다.</p>
+            </div>
             <Button onClick={startGame}>시작하기</Button>
           </div>
         )}
@@ -314,9 +318,17 @@ export function WorkingMemoryGame({ onComplete, isBaseline = false }: WorkingMem
               <p className="text-sm text-muted-foreground mb-2">
                 {isShowingPattern ? "패턴 기억하기" : "패턴 입력하기"}
               </p>
-              <p className="text-sm">
-                라운드: {round + 1}/{MAX_ROUNDS} | 점수: {score}
-              </p>
+              <div className="space-y-1 text-center">
+                <p className="text-sm font-medium">
+                  라운드 {round + 1}/{MAX_ROUNDS}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {gridSize}×{gridSize} 격자에서 {patternLength}개 패턴
+                </p>
+                <p className="text-sm">
+                  현재 점수: {score}점
+                </p>
+              </div>
             </div>
             
             {renderGrid()}
@@ -334,16 +346,18 @@ export function WorkingMemoryGame({ onComplete, isBaseline = false }: WorkingMem
 
         {gameState === 'waitingForNext' && !isPaused && (
           <div className="text-center space-y-4">
-            <p className="text-lg">패턴 입력 완료!</p>
-            <p>
-              맞은 갯수: {correctSelections} | 틀린 갯수: {incorrectSelections} | 점수: {score}
-            </p>
+            <p className="text-lg">라운드 {round + 1} 완료!</p>
+            <div className="space-y-2">
+              <p>맞은 개수: {correctSelections} / {patternLength}</p>
+              <p>이번 라운드 점수: {score - (round > 0 ? previousScores[round - 1] : 0)}점</p>
+              <p>총점: {score}점</p>
+            </div>
             {round < MAX_ROUNDS - 1 ? (
               <Button onClick={handleNextRound}>
-                다음 라운드로 진행
+                다음 라운드 시작
               </Button>
             ) : (
-              <Button onClick={handleGameComplete}>
+              <Button onClick={finishGame}>
                 결과 확인하기
               </Button>
             )}
@@ -360,8 +374,13 @@ export function WorkingMemoryGame({ onComplete, isBaseline = false }: WorkingMem
         {gameState === 'finished' && (
           <div className="text-center space-y-4">
             <h3 className="text-xl font-semibold">게임 완료!</h3>
-            <p>최종 점수: {score}</p>
-            <p>계산 중...</p>
+            <div className="space-y-2">
+              <p className="text-3xl font-bold text-primary">{score}점</p>
+              <div className="text-sm text-muted-foreground space-y-1">
+                <p>정확도: {((correctSelections / (correctSelections + incorrectSelections)) * 100).toFixed(1)}%</p>
+                <p>총 라운드: {round + 1}/{MAX_ROUNDS}</p>
+              </div>
+            </div>
           </div>
         )}
 
