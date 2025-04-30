@@ -99,16 +99,75 @@ export default function Dashboard() {
             <CardHeader className="pb-2">
               <CardTitle className="text-lg">나의 인지 능력 프로필</CardTitle>
             </CardHeader>
-            <CardContent className="pt-4">
-              <div className="aspect-square max-w-[400px] mx-auto">
-                <HexagonChart gameResults={getCognitiveData()} />
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Hexagon Chart */}
+                <div className="relative aspect-square w-full max-w-[300px] mx-auto">
+                  <HexagonChart gameResults={getCognitiveData()} />
+                  <div className="absolute bottom-0 left-0 right-0 text-center text-sm text-muted-foreground">
+                    {getBaselineResults(user.id).length > 0 ? '최근 기록 기준' : '초기 측정 결과'}
+                  </div>
+                </div>
+
+                {/* Detailed Results */}
+                <div className="space-y-4">
+                  <div className="text-center md:text-left text-lg font-semibold mb-2">상세 결과</div>
+                  
+                  {/* Calculate average score */}
+                  {(() => {
+                    const results = getCognitiveData();
+                    const scores = ['RT', 'PS', 'WM2'].map(type => results[type as GameType]).filter(score => score !== null) as number[];
+                    const avgScore = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
+                    
+                    return (
+                      <div className="text-center md:text-left mb-4">
+                        <span className="text-muted-foreground">전체 평균 점수: </span>
+                        <span className="font-bold text-xl text-primary">{avgScore}점</span>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Game Results */}
+                  <div className="space-y-3">
+                    {[
+                      { type: 'RT' as GameType, name: '반응 속도', metricName: '평균 반응시간' },
+                      { type: 'PS' as GameType, name: '정보 처리', metricName: '정확도/속도' },
+                      { type: 'WM2' as GameType, name: '패턴 기억', metricName: '최대 패턴' }
+                    ].map(game => {
+                      const result = getLatestGameResult(user.id, game.type);
+                      const score = getCognitiveData()[game.type];
+                      
+                      return (
+                        <Card key={game.type} className="bg-white/80">
+                          <CardContent className="py-3">
+                            <div className="flex justify-between items-center">
+                              <div className="space-y-1">
+                                <div className="font-medium">{game.name}</div>
+                                <div className="text-sm text-muted-foreground">
+                                  {result ? (
+                                    game.type === 'RT' ? 
+                                      `${Math.round(result.metrics.averageReactionTime)}ms` :
+                                    game.type === 'PS' ? 
+                                      `${result.metrics.correctResponses}개 정답 (${(result.metrics.accuracy * 100).toFixed(1)}%)` :
+                                    game.type === 'WM2' ? 
+                                      `패턴 길이: ${result.metrics.workingMemorySpan}` :
+                                      ''
+                                  ) : '기록 없음'}
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <div className="text-lg font-semibold text-primary">
+                                  {score !== null ? `${Math.round(score)}점` : '-'}
+                                </div>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
-              <div className="text-center text-sm text-muted-foreground mt-4">
-                {getBaselineResults(user.id).length > 0 ? '최근 기록 기준' : '초기 측정 결과'}
-              </div>
-              
-              {/* Add Game Results Cards */}
-              <GameResultsCards />
             </CardContent>
           </Card>
           
