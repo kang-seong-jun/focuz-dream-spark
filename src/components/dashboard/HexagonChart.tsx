@@ -1,4 +1,3 @@
-
 import { useEffect, useRef } from 'react';
 import { GameResult, GameType, GAME_TYPES } from '@/types';
 
@@ -52,7 +51,7 @@ export function HexagonChart({ gameResults, className = "" }: HexagonChartProps)
       svg.appendChild(line);
       
       // Add labels
-      const labelOffset = 1.15; // Slightly outside the hexagon
+      const labelOffset = 1.2; // Increased offset for better spacing
       const labelX = centerX + radius * labelOffset * Math.cos(angle);
       const labelY = centerY - radius * labelOffset * Math.sin(angle);
       
@@ -60,7 +59,7 @@ export function HexagonChart({ gameResults, className = "" }: HexagonChartProps)
       text.setAttribute('x', labelX.toString());
       text.setAttribute('y', labelY.toString());
       text.setAttribute('class', 'hexagon-chart-label');
-      text.textContent = GAME_TYPES[gameTypes[i]].fullName;
+      text.textContent = GAME_TYPES[gameTypes[i]].name;
       svg.appendChild(text);
     }
     
