@@ -145,7 +145,7 @@ export function ProcessingSpeedGame({ onComplete, isBaseline = false }: Processi
       timePerResponse = totalTime / totalResponses;     // 총 걸린 시간 ÷ 반응 개수
     }
   
-    const score = calculateScore(correct, accuracy);
+    const score = calculateScore(correct, timePerResponse, accuracy);
   
     const calculatedMetrics = {
       correctResponses: correct,
@@ -166,13 +166,20 @@ export function ProcessingSpeedGame({ onComplete, isBaseline = false }: Processi
   };
   
   // Calculate score
-  const calculateScore = (correct: number, accuracy: number) => {
-    // Base score is number of correct responses (capped at 100)
-    let baseScore = Math.min(100, Math.max(0, correct * 2));
-    // Apply accuracy bonus (up to 20% extra)
-    const accuracyBonus = Math.max(0, accuracy) * 20;
-    const score = baseScore + accuracyBonus;
-    return isNaN(score) ? 0 : Math.round(score);
+  const calculateScore = (correct: number, avgSpeed: number, accuracy: number): number => {
+    // 1. 맞춘 개수 기반 기본 점수 (최대 60점)
+    let baseScore = (correct / 20) * 60;  // 20개 맞추면 60점
+    
+    // 2. 반응 속도 보너스 (최대 20점)
+    let speedBonus = 0;
+    if (avgSpeed < 1000) {
+      speedBonus = Math.round((1000 - avgSpeed) / 1000 * 20);
+    }
+    
+    // 3. 정확도 보너스 (최대 20점)
+    let accuracyBonus = Math.round(accuracy * 20);
+    
+    return Math.min(100, Math.round(baseScore + speedBonus + accuracyBonus));
   };
   
   // Effects for pause/resume

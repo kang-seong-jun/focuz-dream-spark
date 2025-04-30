@@ -246,6 +246,21 @@ export function WorkingMemoryGame({ onComplete, isBaseline = false }: WorkingMem
   // Get user from auth context
   const { user } = useAuth();
   
+  const calculateScore = (memorySpan: number): number => {
+    return Math.min(100, Math.round((memorySpan / 10) * 100));
+  };
+
+  const handleGameComplete = () => {
+    const score = calculateScore(round);
+    onComplete({
+      gameType: 'WM2',
+      score,
+      workingMemorySpan: round,
+      accuracy: correctSelections / (correctSelections + incorrectSelections),
+      timestamp: new Date().toISOString()
+    });
+  };
+  
   return (
     <Card className="w-full max-w-md mx-auto bg-white/95 backdrop-blur-sm shadow-lg border-0">
       <CardHeader className="border-b pb-3">
@@ -302,7 +317,7 @@ export function WorkingMemoryGame({ onComplete, isBaseline = false }: WorkingMem
                 다음 라운드로 진행
               </Button>
             ) : (
-              <Button onClick={finishGame}>
+              <Button onClick={handleGameComplete}>
                 결과 확인하기
               </Button>
             )}
@@ -321,6 +336,22 @@ export function WorkingMemoryGame({ onComplete, isBaseline = false }: WorkingMem
             <h3 className="text-xl font-semibold">게임 완료!</h3>
             <p>최종 점수: {score}</p>
             <p>계산 중...</p>
+          </div>
+        )}
+
+        {gameState === 'complete' && (
+          <div className="text-center space-y-4">
+            <h3 className="text-xl font-semibold">패턴 기억하기 측정 완료!</h3>
+            <div className="text-3xl font-bold text-primary">
+              {calculateScore(round)}점
+            </div>
+            <div className="space-y-2">
+              <div>최대 패턴 길이: {round}</div>
+              <div>정확도: {((correctSelections / (correctSelections + incorrectSelections)) * 100).toFixed(1)}%</div>
+            </div>
+            <div className="text-sm text-muted-foreground">
+              (패턴 길이 10: 100점 기준)
+            </div>
           </div>
         )}
       </CardContent>

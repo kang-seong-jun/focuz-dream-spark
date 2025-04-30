@@ -171,7 +171,7 @@ export function ReactionTimeGame({ onComplete, isBaseline = false }: ReactionTim
     // Calculate other metrics
     const totalTargetTrials = targetTrials;
     const omissionErrorRate = totalTargetTrials > 0 ? omissionErrors / totalTargetTrials : 0;
-    const score = calculateScore(averageReactionTime, commissionErrors, omissionErrors);
+    const score = calculateScore(averageReactionTime);
     
     const metrics = {
       averageReactionTime,
@@ -193,21 +193,8 @@ export function ReactionTimeGame({ onComplete, isBaseline = false }: ReactionTim
   };
   
   // Calculate score based on reaction time and errors
-  const calculateScore = (meanRT: number, commission: number, omission: number) => {
-    // Lower reaction time is better (up to a point)
-    // Fewer errors is better
-    
-    // Base score depends on reaction time (faster = better)
-    let rtScore = 0;
-    if (meanRT > 0) {
-      // Map reaction time between 100ms and 500ms to a score between 100 and 0
-      rtScore = Math.max(0, Math.min(100, 100 - ((meanRT - 100) / 4)));
-    }
-    
-    // Penalty for errors (each error reduces score by 10 points)
-    const errorPenalty = (commission + omission) * 10;
-    
-    return Math.max(0, rtScore - errorPenalty);
+  const calculateScore = (reactionTime: number): number => {
+    return Math.round(Math.max(0, Math.min(100, 100 - ((reactionTime - 150) / 850) * 100)));
   };
   
   // Cleanup on unmount
@@ -304,6 +291,21 @@ export function ReactionTimeGame({ onComplete, isBaseline = false }: ReactionTim
               평균 반응속도: <span className="font-semibold">{(
                 reactionTimes.reduce((a, b) => a + b, 0) / reactionTimes.length
               ).toFixed(1)}ms</span>
+            </div>
+          </div>
+        )}
+
+        {gameState === 'finished' && (
+          <div className="space-y-6 text-center">
+            <h3 className="text-xl font-semibold">반응 속도 측정 완료!</h3>
+            <div className="text-3xl font-bold text-primary">
+              {calculateScore(reactionTimes.reduce((sum, trial) => sum + trial, 0) / reactionTimes.length)}점
+            </div>
+            <div>
+              평균 반응 시간: {Math.round(reactionTimes.reduce((sum, trial) => sum + trial, 0) / reactionTimes.length)}ms
+            </div>
+            <div className="text-sm text-muted-foreground">
+              (150ms: 100점, 1000ms: 0점 기준)
             </div>
           </div>
         )}
