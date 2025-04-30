@@ -31,7 +31,11 @@ export function WorkingMemoryGame({ onComplete, isBaseline = false }: WorkingMem
   
   // Game settings
   const MAX_ROUNDS = 3;
-  const PATTERN_SHOW_TIME = 1500; // 1.5 seconds to show pattern
+  const PATTERN_SHOW_TIMES = {
+    0: 800,  // 1라운드: 0.8초
+    1: 1000, // 2라운드: 1.0초
+    2: 1200  // 3라운드: 1.2초
+  };
   const SPEED_BONUS_THRESHOLD = 1000; // 1 second per pattern for speed bonus
   
   // Refs for timers
@@ -89,10 +93,10 @@ export function WorkingMemoryGame({ onComplete, isBaseline = false }: WorkingMem
     // Show the pattern
     setIsShowingPattern(true);
     
-    // Hide the pattern after patternShowTime
+    // Hide the pattern after patternShowTime based on current round
     timerRef.current = window.setTimeout(() => {
       setIsShowingPattern(false);
-    }, PATTERN_SHOW_TIME);
+    }, PATTERN_SHOW_TIMES[round]);
   };
   
   // Handle cell click
