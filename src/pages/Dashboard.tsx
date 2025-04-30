@@ -50,14 +50,18 @@ export default function Dashboard() {
         
         switch (type) {
           case 'WM':
-            // Higher is better
-            score = result.metrics.memorySpan * 10; // Assuming span 1-10
+          case 'WM2':
+            // 패턴 기억 점수: 패턴 길이 10이 100점
+            const memorySpan = result.metrics.workingMemorySpan || 0;
+            score = Math.min(100, Math.round((memorySpan / 10) * 100));
             break;
           case 'RT':
-            // Lower is better (reaction time)
-            score = Math.max(0, 100 - (result.metrics.meanReactionTime / 5));
+            // 반응속도 점수: 150ms가 100점, 1000ms가 0점
+            const reactionTime = result.metrics.averageReactionTime || 1000;
+            score = Math.round(Math.max(0, Math.min(100, 100 - ((reactionTime - 150) / 850) * 100)));
             break;
           case 'PS':
+            // 정보처리 점수는 이미 0-100으로 정규화되어 있음
             score = typeof result.metrics.score === 'number' ? result.metrics.score : 0;
             break;
           default:
