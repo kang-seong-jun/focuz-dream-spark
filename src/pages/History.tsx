@@ -5,7 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useGame } from "@/context/GameContext";
 import { useSleep } from "@/context/SleepContext";
 import { useAuth } from "@/context/AuthContext";
-import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from "date-fns";
+import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, isValid, parseISO } from "date-fns";
 import { ko } from "date-fns/locale";
 
 export default function History() {
@@ -18,11 +18,21 @@ export default function History() {
   const gameResults = user ? getGameResults(user.id) : [];
   const sleepRecords = user ? getSleepRecords(user.id) : [];
 
+  // Safe date parsing
+  const parseDate = (dateString: string): Date | null => {
+    try {
+      const date = new Date(dateString);
+      return isValid(date) ? date : null;
+    } catch {
+      return null;
+    }
+  };
+
   // Calculate average cognitive score for a date range
   const getAverageCognitiveScore = (startDate: Date, endDate: Date) => {
     const results = gameResults.filter(result => {
-      const date = new Date(result.timestamp);
-      return date >= startDate && date <= endDate;
+      const date = parseDate(result.timestamp);
+      return date && date >= startDate && date <= endDate;
     });
 
     if (results.length === 0) return null;
@@ -34,8 +44,8 @@ export default function History() {
   // Calculate average sleep score for a date range
   const getAverageSleepScore = (startDate: Date, endDate: Date) => {
     const records = sleepRecords.filter(record => {
-      const date = new Date(record.timestamp);
-      return date >= startDate && date <= endDate;
+      const date = parseDate(record.timestamp);
+      return date && date >= startDate && date <= endDate;
     });
 
     if (records.length === 0) return null;
@@ -50,19 +60,25 @@ export default function History() {
     
     // Group by date
     gameResults.forEach(result => {
-      const date = format(new Date(result.timestamp), 'yyyy-MM-dd');
-      if (!records.has(date)) {
-        records.set(date, { date, cognitiveScore: 0, sleepScore: null });
+      const date = parseDate(result.timestamp);
+      if (!date) return;
+      
+      const dateKey = format(date, 'yyyy-MM-dd');
+      if (!records.has(dateKey)) {
+        records.set(dateKey, { date: dateKey, cognitiveScore: 0, sleepScore: null });
       }
-      records.get(date).cognitiveScore = result.metrics.score || 0;
+      records.get(dateKey).cognitiveScore = result.metrics.score || 0;
     });
 
     sleepRecords.forEach(record => {
-      const date = format(new Date(record.timestamp), 'yyyy-MM-dd');
-      if (!records.has(date)) {
-        records.set(date, { date, cognitiveScore: null, sleepScore: 0 });
+      const date = parseDate(record.timestamp);
+      if (!date) return;
+      
+      const dateKey = format(date, 'yyyy-MM-dd');
+      if (!records.has(dateKey)) {
+        records.set(dateKey, { date: dateKey, cognitiveScore: null, sleepScore: 0 });
       }
-      records.get(date).sleepScore = record.calculatedSleepScore;
+      records.get(dateKey).sleepScore = record.calculatedSleepScore;
     });
 
     return Array.from(records.values())
@@ -76,7 +92,9 @@ export default function History() {
     
     // Group by week
     [...gameResults, ...sleepRecords].forEach(record => {
-      const date = new Date(record.timestamp);
+      const date = parseDate(record.timestamp);
+      if (!date) return;
+      
       const weekStart = format(startOfWeek(date, { locale: ko }), 'yyyy-MM-dd');
       const weekEnd = format(endOfWeek(date, { locale: ko }), 'yyyy-MM-dd');
       const weekKey = `${weekStart}~${weekEnd}`;
@@ -101,7 +119,9 @@ export default function History() {
     
     // Group by month
     [...gameResults, ...sleepRecords].forEach(record => {
-      const date = new Date(record.timestamp);
+      const date = parseDate(record.timestamp);
+      if (!date) return;
+      
       const monthKey = format(date, 'yyyy-MM');
 
       if (!records.has(monthKey)) {
@@ -132,7 +152,11 @@ export default function History() {
         <CardContent className="py-4">
           <div className="flex justify-between items-center">
             <div className="font-medium">
-              {period === 'daily' ? format(new Date(record.date), 'M월 d일') :
+              {period === 'daily' ? 
+                (() => {
+                  const date = parseISO(record.date);
+                  return isValid(date) ? format(date, 'M월 d일') : '날짜 오류';
+                })() :
                period === 'weekly' ? record.period.replace('~', ' ~ ') :
                `${record.period.slice(5)}월`}
             </div>
