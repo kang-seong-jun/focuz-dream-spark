@@ -59,16 +59,16 @@ export const GAME_TYPES: Record<GameType, { name: string; fullName: string; desc
   'DM': {
     name: '의사결정\n(준비중)',
     fullName: '판단력',
-    description: '더 많은 쪽 고르기! 더 많은 양이 있는 쪽을 선택하세요',
+    description: '더 많은 쪽 고르기! 더 많은 점이 있는 쪽을 고르세요',
     primaryMetric: 'decisionAccuracy'
   },
   'WM2': {
-    name: '패턴기억',
-    fullName: '패턴 기억',
-    description: '화면에 나타나는 패턴을 기억하고 같은 순서로 재현하세요',
-    primaryMetric: 'workingMemorySpan'
+    name: '숫자기억2',
+    fullName: '숫자 기억2',
+    description: '화면에 나타나는 숫자를 순서대로 기억하세요',
+    primaryMetric: 'memorySpan'
   }
-};
+} as const;
 
 // Define sleep questionnaire interface
 export interface SleepQuestion {
