@@ -51,7 +51,7 @@ export function HexagonChart({ gameResults, className = "" }: HexagonChartProps)
       svg.appendChild(line);
       
       // Add labels
-      const labelOffset = 1.2; // Increased offset for better spacing
+      const labelOffset = 1.1; // Adjusted offset as requested
       const labelX = centerX + radius * labelOffset * Math.cos(angle);
       const labelY = centerY - radius * labelOffset * Math.sin(angle);
       
