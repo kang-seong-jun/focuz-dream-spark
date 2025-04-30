@@ -15,13 +15,25 @@ export function ProcessingSpeedGame({ onComplete, isBaseline = false }: Processi
   // Game state
   const [gameState, setGameState] = useState<'instruction' | 'playing' | 'finished'>('instruction');
   const [isPaused, setIsPaused] = useState(false);
-  const [timeRemaining, setTimeRemaining] = useState(60); // 60 seconds
+  const [timeRemaining, setTimeRemaining] = useState(15); // 60 seconds
   const [currentIndex, setCurrentIndex] = useState(0);
   
   // Game metrics
   const [correctResponses, setCorrectResponses] = useState(0);
   const [incorrectResponses, setIncorrectResponses] = useState(0);
   const [responseTimestamps, setResponseTimestamps] = useState<number[]>([]);
+
+  const [finalMetrics, setFinalMetrics] = useState<Record<string, any> | null>(null);
+
+  const correctResponsesRef = useRef(0);
+  const incorrectResponsesRef = useRef(0);
+
+  useEffect(() => {
+    if (gameState === 'finished' && finalMetrics) {
+      onComplete(finalMetrics);
+    }
+  }, [gameState, finalMetrics]);  
+
   
   // Symbol mapping and sequence
   const [symbolMapping] = useState<SymbolMapping>(() => {
@@ -58,7 +70,7 @@ export function ProcessingSpeedGame({ onComplete, isBaseline = false }: Processi
   const startTime = useRef<number | null>(null);
   
   // Constants
-  const GAME_DURATION = 60; // seconds
+  const GAME_DURATION = 20; // seconds
   
   // Start the game
   const handleStart = () => {
@@ -85,69 +97,68 @@ export function ProcessingSpeedGame({ onComplete, isBaseline = false }: Processi
   // Handle digit input
   const handleDigitInput = (digit: number) => {
     if (gameState !== 'playing' || isPaused) return;
-    
+  
     // Record response timestamp
     setResponseTimestamps(prev => [...prev, Date.now()]);
-    
-    // Check if the response is correct
+  
     const currentSymbol = symbolSequence[currentIndex];
     const correctDigit = symbolMapping[currentSymbol];
-    
+  
     if (digit === correctDigit) {
+      correctResponsesRef.current += 1;  
       setCorrectResponses(prev => prev + 1);
     } else {
+      incorrectResponsesRef.current += 1;
       setIncorrectResponses(prev => prev + 1);
     }
-    
-    // Move to next symbol
-    setCurrentIndex(prev => {
-      if (prev < symbolSequence.length - 1) {
-        return prev + 1;
-      }
-      // If we've used all symbols, finish the game
-      finishGame();
-      return prev;
-    });
+  
+    // If last symbol, defer finishGame outside of state update
+    if (currentIndex >= symbolSequence.length - 1) {
+      setCurrentIndex(currentIndex); // Just re-set
+      setTimeout(() => {
+        finishGame(); // ✅ DEFERRED
+      }, 0);
+    } else {
+      setCurrentIndex(prev => prev + 1);
+    }
   };
+  
   
   // Finish the game
   const finishGame = () => {
-    // Clear timer
     if (gameTimer.current) {
       clearInterval(gameTimer.current);
       gameTimer.current = null;
     }
-    
+  
     setGameState('finished');
     
-    // Calculate metrics
-    const totalResponses = correctResponses + incorrectResponses;
-    const accuracy = totalResponses > 0 ? correctResponses / totalResponses : 0;
-    const itemsProcessed = totalResponses;
-    
-    // Calculate average time per response
+    // Store metrics for later
+    const correct = correctResponsesRef.current;
+    const incorrect = incorrectResponsesRef.current;
+    const totalResponses = correct + incorrect;
+    const accuracy = totalResponses > 0 ? correct / totalResponses : 0;
+  
     let timePerResponse = 0;
-    if (responseTimestamps.length > 1) {
-      // Calculate differences between consecutive timestamps
-      let totalTimeDiff = 0;
-      for (let i = 1; i < responseTimestamps.length; i++) {
-        totalTimeDiff += responseTimestamps[i] - responseTimestamps[i-1];
-      }
-      timePerResponse = totalTimeDiff / (responseTimestamps.length - 1);
+    if (totalResponses > 0 && startTime.current !== null) {
+      const totalTime = Date.now() - startTime.current; // 게임 시작부터 지금까지
+      timePerResponse = totalTime / totalResponses;     // 총 걸린 시간 ÷ 반응 개수
     }
-    
-    const score = calculateScore(correctResponses, accuracy);
-    
-    const metrics = {
-      correctResponses,
+  
+    const score = calculateScore(correct, accuracy);
+  
+    const calculatedMetrics = {
+      correctResponses: correct,
+      incorrectResponses: incorrect,
       accuracy,
-      itemsProcessed,
+      itemsProcessed: totalResponses,
       timePerResponse,
-      score,
+      score
     };
-    
-    onComplete(metrics);
+  
+    setFinalMetrics(calculatedMetrics); // ← NEW STATE
   };
+  
   
   // Toggle pause state
   const togglePause = () => {
@@ -166,14 +177,14 @@ export function ProcessingSpeedGame({ onComplete, isBaseline = false }: Processi
   
   // Effects for pause/resume
   useEffect(() => {
-    if (isPaused) {
-      // Clear timer during pause
-      if (gameTimer.current) {
-        clearInterval(gameTimer.current);
-        gameTimer.current = null;
-      }
-    } else if (gameState === 'playing') {
-      // Resume game timer
+    // Always clear previous interval
+    if (gameTimer.current) {
+      clearInterval(gameTimer.current);
+      gameTimer.current = null;
+    }
+  
+    // If not paused and playing, start a new timer
+    if (!isPaused && gameState === 'playing') {
       gameTimer.current = window.setInterval(() => {
         setTimeRemaining(prev => {
           if (prev <= 1) {
@@ -184,7 +195,16 @@ export function ProcessingSpeedGame({ onComplete, isBaseline = false }: Processi
         });
       }, 1000);
     }
+  
+    // Clean up on unmount
+    return () => {
+      if (gameTimer.current) {
+        clearInterval(gameTimer.current);
+        gameTimer.current = null;
+      }
+    };
   }, [isPaused, gameState]);
+  
   
   // Cleanup on unmount
   useEffect(() => {
@@ -269,7 +289,15 @@ export function ProcessingSpeedGame({ onComplete, isBaseline = false }: Processi
             <div className="mt-4 text-base space-y-1">
               <div>맞춘 개수: <span className="font-semibold">{correctResponses}</span></div>
               <div>정확도: <span className="font-semibold">{((correctResponses + incorrectResponses) > 0 ? (correctResponses / (correctResponses + incorrectResponses) * 100).toFixed(1) : 0)}%</span></div>
-              <div>평균 반응속도: <span className="font-semibold">{(responseTimestamps.length > 1 ? ((responseTimestamps[responseTimestamps.length-1] - responseTimestamps[0]) / (responseTimestamps.length-1)).toFixed(1) : 0)}ms</span></div>
+              <div>
+                평균 반응속도: 
+                <span className="font-semibold">
+                  {responseTimestamps.length > 1
+                    ? ((responseTimestamps[responseTimestamps.length - 1] - responseTimestamps[0]) / (responseTimestamps.length - 1) / 1000).toFixed(1)
+                    : 0}초
+                </span>
+              </div>
+
             </div>
           </div>
         )}
