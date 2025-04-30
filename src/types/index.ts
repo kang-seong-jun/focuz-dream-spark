@@ -72,6 +72,7 @@ export const GAME_TYPES: Record<GameType, { name: string; fullName: string; desc
 
 // Define sleep questionnaire interface
 export interface SleepQuestion {
+  headline: string;
   question: string;
   options: string[];
 }
@@ -79,42 +80,46 @@ export interface SleepQuestion {
 // Define baseline sleep questions
 export const SLEEP_QUESTIONS: SleepQuestion[] = [
   {
-    question: "평소 수면 시간은 어느 정도입니까?",
+    headline: "평소 수면 습관을 알려주세요 (1/4)",
+    question: "평소 몇 시간 정도 주무시는 편인가요?",
     options: [
-      "5시간 미만",
-      "5-6시간",
-      "7-8시간", 
-      "9-10시간",
-      "10시간 초과"
+      "① 5시간 미만",
+      "② 5-6시간",
+      "③ 6-7시간",
+      "④ 7-8시간",
+      "⑤ 8시간 이상"
     ]
   },
   {
-    question: "잠드는데 얼마나 걸리나요?",
+    headline: "평소 수면 습관을 알려주세요 (2/4)",
+    question: "평소 수면의 질은 어떻다고 느끼시나요?",
     options: [
-      "5분 이내",
-      "5-15분",
-      "15-30분",
-      "30분-1시간", 
-      "1시간 이상"
+      "① 매우 좋음",
+      "② 좋음",
+      "③ 보통",
+      "④ 나쁨",
+      "⑤ 매우 나쁨"
     ]
   },
   {
-    question: "낮에 졸린 느낌이 자주 드나요?",
+    headline: "평소 수면 습관을 알려주세요 (3/4)",
+    question: "평소 낮 동안 얼마나 졸리다고 느끼시나요?",
     options: [
-      "거의 없음",
-      "가끔 있음",
-      "자주 있음", 
-      "매우 자주 있음"
+      "① 거의 안 졸림",
+      "② 가끔 졸림",
+      "③ 자주 졸림",
+      "④ 항상 졸림"
     ]
   },
   {
-    question: "아침에 일어날 때 컨디션이 어떠신가요?",
+    headline: "평소 수면 습관을 알려주세요 (4/4)",
+    question: "평소 잠을 자고 일어났을 때, 얼마나 개운하다고 느끼시나요?",
     options: [
-      "매우 개운함",
-      "개운함",
-      "보통", 
-      "피곤함",
-      "매우 피곤함"
+      "① 매우 개운함",
+      "② 개운함",
+      "③ 보통",
+      "④ 피곤함",
+      "⑤ 매우 피곤함"
     ]
   }
 ];
@@ -122,42 +127,72 @@ export const SLEEP_QUESTIONS: SleepQuestion[] = [
 // Define daily sleep questions
 export const DAILY_SLEEP_QUESTIONS: SleepQuestion[] = [
   {
-    question: "어젯밤 수면 시간은 어느 정도였나요?",
+    headline: "오늘의 수면 컨디션을 알려주세요 (1/4)",
+    question: "오늘 몇 시간 정도 주무셨나요?",
     options: [
-      "5시간 미만",
-      "5-6시간",
-      "7-8시간", 
-      "9-10시간",
-      "10시간 초과"
+      "① 5시간 미만",
+      "② 5-6시간",
+      "③ 6-7시간",
+      "④ 7-8시간",
+      "⑤ 8시간 이상"
     ]
   },
   {
-    question: "어젯밤 잠드는데 얼마나 걸렸나요?",
+    headline: "오늘의 수면 컨디션을 알려주세요 (2/4)",
+    question: "오늘 수면의 질은 어떻다고 느끼시나요?",
     options: [
-      "5분 이내",
-      "5-15분",
-      "15-30분",
-      "30분-1시간", 
-      "1시간 이상"
+      "① 매우 좋음",
+      "② 좋음",
+      "③ 보통",
+      "④ 나쁨",
+      "⑤ 매우 나쁨"
     ]
   },
   {
-    question: "오늘 낮에 졸린 느낌이 있나요?",
+    headline: "오늘의 수면 컨디션을 알려주세요 (3/4)",
+    question: "오늘 낮 동안 얼마나 졸리다고 느끼시나요?",
     options: [
-      "거의 없음",
-      "가끔 있음",
-      "자주 있음", 
-      "매우 자주 있음"
+      "① 거의 안 졸림",
+      "② 가끔 졸림",
+      "③ 자주 졸림",
+      "④ 항상 졸림"
     ]
   },
   {
-    question: "오늘 아침 일어났을 때 컨디션이 어땠나요?",
+    headline: "오늘의 수면 컨디션을 알려주세요 (4/4)",
+    question: "오늘 잠을 자고 일어났을 때, 얼마나 개운하다고 느끼시나요?",
     options: [
-      "매우 개운함",
-      "개운함",
-      "보통", 
-      "피곤함",
-      "매우 피곤함"
+      "① 매우 개운함",
+      "② 개운함",
+      "③ 보통",
+      "④ 피곤함",
+      "⑤ 매우 피곤함"
     ]
   }
 ];
+
+// Calculate sleep score (0-100)
+export const calculateSleepScore = (answers: number[]): number => {
+  if (answers.length !== 4) return 0;
+
+  let score = 0;
+
+  // Q1: Sleep duration (0-40 points)
+  // 6-7시간(2), 7-8시간(3)은 만점, 5-6시간(1)과 8시간 이상(4)은 감점, 5시간 미만(0)은 최저점
+  const durationScores = [10, 30, 40, 40, 30];
+  score += durationScores[answers[0]] || 0;
+
+  // Q2: Sleep quality (0-20 points)
+  // 매우 좋음(4) -> 20점, 매우 나쁨(0) -> 0점
+  score += (4 - answers[1]) * 5;
+
+  // Q3: Daytime sleepiness (0-20 points)
+  // 거의 안 졸림(3) -> 20점, 항상 졸림(0) -> 0점
+  score += (3 - answers[2]) * (20/3);
+
+  // Q4: Morning freshness (0-20 points)
+  // 매우 개운함(4) -> 20점, 매우 피곤함(0) -> 0점
+  score += (4 - answers[3]) * 5;
+
+  return Math.round(score);
+};

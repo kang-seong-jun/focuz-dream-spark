@@ -1,36 +1,183 @@
-
-import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState } from "react";
 import { MainLayout } from "@/layouts/MainLayout";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useGame } from "@/context/GameContext";
+import { useSleep } from "@/context/SleepContext";
 import { useAuth } from "@/context/AuthContext";
+import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from "date-fns";
+import { ko } from "date-fns/locale";
 
 export default function History() {
-  const navigate = useNavigate();
-  const { user, isLoading } = useAuth();
+  const [period, setPeriod] = useState<'daily' | 'weekly' | 'monthly'>('daily');
+  const { user } = useAuth();
+  const { getGameResults } = useGame();
+  const { getSleepRecords } = useSleep();
 
-  // Redirect to login if no user
-  useEffect(() => {
-    if (!isLoading && !user) {
-      navigate('/login');
+  // Get all game results and sleep records
+  const gameResults = user ? getGameResults(user.id) : [];
+  const sleepRecords = user ? getSleepRecords(user.id) : [];
+
+  // Calculate average cognitive score for a date range
+  const getAverageCognitiveScore = (startDate: Date, endDate: Date) => {
+    const results = gameResults.filter(result => {
+      const date = new Date(result.timestamp);
+      return date >= startDate && date <= endDate;
+    });
+
+    if (results.length === 0) return null;
+
+    const scores = results.map(result => result.metrics.score || 0);
+    return Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
+  };
+
+  // Calculate average sleep score for a date range
+  const getAverageSleepScore = (startDate: Date, endDate: Date) => {
+    const records = sleepRecords.filter(record => {
+      const date = new Date(record.timestamp);
+      return date >= startDate && date <= endDate;
+    });
+
+    if (records.length === 0) return null;
+
+    const scores = records.map(record => record.calculatedSleepScore);
+    return Math.round(scores.reduce((a, b) => a + b, 0) / records.length);
+  };
+
+  // Get daily records
+  const getDailyRecords = () => {
+    const records = new Map();
+    
+    // Group by date
+    gameResults.forEach(result => {
+      const date = format(new Date(result.timestamp), 'yyyy-MM-dd');
+      if (!records.has(date)) {
+        records.set(date, { date, cognitiveScore: 0, sleepScore: null });
+      }
+      records.get(date).cognitiveScore = result.metrics.score || 0;
+    });
+
+    sleepRecords.forEach(record => {
+      const date = format(new Date(record.timestamp), 'yyyy-MM-dd');
+      if (!records.has(date)) {
+        records.set(date, { date, cognitiveScore: null, sleepScore: 0 });
+      }
+      records.get(date).sleepScore = record.calculatedSleepScore;
+    });
+
+    return Array.from(records.values())
+      .sort((a, b) => b.date.localeCompare(a.date))
+      .slice(0, 30); // Show last 30 days
+  };
+
+  // Get weekly records
+  const getWeeklyRecords = () => {
+    const records = new Map();
+    
+    // Group by week
+    [...gameResults, ...sleepRecords].forEach(record => {
+      const date = new Date(record.timestamp);
+      const weekStart = format(startOfWeek(date, { locale: ko }), 'yyyy-MM-dd');
+      const weekEnd = format(endOfWeek(date, { locale: ko }), 'yyyy-MM-dd');
+      const weekKey = `${weekStart}~${weekEnd}`;
+
+      if (!records.has(weekKey)) {
+        records.set(weekKey, {
+          period: weekKey,
+          cognitiveScore: getAverageCognitiveScore(startOfWeek(date, { locale: ko }), endOfWeek(date, { locale: ko })),
+          sleepScore: getAverageSleepScore(startOfWeek(date, { locale: ko }), endOfWeek(date, { locale: ko }))
+        });
+      }
+    });
+
+    return Array.from(records.values())
+      .sort((a, b) => b.period.localeCompare(a.period))
+      .slice(0, 12); // Show last 12 weeks
+  };
+
+  // Get monthly records
+  const getMonthlyRecords = () => {
+    const records = new Map();
+    
+    // Group by month
+    [...gameResults, ...sleepRecords].forEach(record => {
+      const date = new Date(record.timestamp);
+      const monthKey = format(date, 'yyyy-MM');
+
+      if (!records.has(monthKey)) {
+        records.set(monthKey, {
+          period: monthKey,
+          cognitiveScore: getAverageCognitiveScore(startOfMonth(date), endOfMonth(date)),
+          sleepScore: getAverageSleepScore(startOfMonth(date), endOfMonth(date))
+        });
+      }
+    });
+
+    return Array.from(records.values())
+      .sort((a, b) => b.period.localeCompare(a.period))
+      .slice(0, 6); // Show last 6 months
+  };
+
+  const renderRecords = (records: any[]) => {
+    if (records.length === 0) {
+      return (
+        <div className="text-center text-muted-foreground py-8">
+          기록이 없습니다.
+        </div>
+      );
     }
-  }, [user, isLoading, navigate]);
 
-  // If loading or no user, show loading
-  if (isLoading || !user) {
-    return <div>로딩 중...</div>;
-  }
+    return records.map((record, index) => (
+      <Card key={index} className="bg-white/95 backdrop-blur-sm">
+        <CardContent className="py-4">
+          <div className="flex justify-between items-center">
+            <div className="font-medium">
+              {period === 'daily' ? format(new Date(record.date), 'M월 d일') :
+               period === 'weekly' ? record.period.replace('~', ' ~ ') :
+               `${record.period.slice(5)}월`}
+            </div>
+            <div className="flex gap-4">
+              <div className="text-sm">
+                <span className="text-muted-foreground">수면 </span>
+                <span className="font-semibold">{record.sleepScore ?? '-'}점</span>
+              </div>
+              <div className="text-sm">
+                <span className="text-muted-foreground">인지 </span>
+                <span className="font-semibold">{record.cognitiveScore ?? '-'}점</span>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    ));
+  };
 
   return (
     <MainLayout>
-      <div className="space-y-6">
-        <h1 className="text-2xl font-bold">히스토리 및 분석</h1>
-        
-        <div className="bg-white/95 backdrop-blur-sm rounded-lg p-6 text-center">
-          <p className="text-lg">히스토리 페이지는 준비 중입니다.</p>
-          <p className="text-muted-foreground mt-2">
-            수면과 퍼포먼스 기록이 쌓이면 여기에서 트렌드와 인사이트를 확인할 수 있습니다.
-          </p>
+      <div className="space-y-6 pb-16">
+        <div className="flex justify-between items-center">
+          <h1 className="text-2xl font-bold">기록</h1>
         </div>
+
+        <Tabs value={period} onValueChange={(value: any) => setPeriod(value)} className="w-full">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="daily">일별</TabsTrigger>
+            <TabsTrigger value="weekly">주별</TabsTrigger>
+            <TabsTrigger value="monthly">월별</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="daily" className="space-y-4 mt-4">
+            {renderRecords(getDailyRecords())}
+          </TabsContent>
+
+          <TabsContent value="weekly" className="space-y-4 mt-4">
+            {renderRecords(getWeeklyRecords())}
+          </TabsContent>
+
+          <TabsContent value="monthly" className="space-y-4 mt-4">
+            {renderRecords(getMonthlyRecords())}
+          </TabsContent>
+        </Tabs>
       </div>
     </MainLayout>
   );
