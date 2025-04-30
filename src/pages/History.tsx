@@ -40,6 +40,26 @@ export default function History() {
     }
   };
 
+  // Format period safely
+  const formatPeriod = (record: any): string => {
+    if (!record) return '날짜 오류';
+
+    try {
+      switch (period) {
+        case 'daily':
+          return formatDate(record.date, 'M월 d일');
+        case 'weekly':
+          return record.period ? record.period.replace('~', ' ~ ') : '날짜 오류';
+        case 'monthly':
+          return record.period ? `${record.period.slice(5)}월` : '날짜 오류';
+        default:
+          return '날짜 오류';
+      }
+    } catch {
+      return '날짜 오류';
+    }
+  };
+
   // Calculate average cognitive score for a date range
   const getAverageCognitiveScore = (startDate: Date, endDate: Date) => {
     const results = gameResults.filter(result => {
@@ -121,7 +141,7 @@ export default function History() {
     });
 
     return Array.from(records.values())
-      .sort((a, b) => b.period.localeCompare(a.period))
+      .sort((a, b) => (b.period || '').localeCompare(a.period || ''))
       .slice(0, 12); // Show last 12 weeks
   };
 
@@ -146,7 +166,7 @@ export default function History() {
     });
 
     return Array.from(records.values())
-      .sort((a, b) => b.period.localeCompare(a.period))
+      .sort((a, b) => (b.period || '').localeCompare(a.period || ''))
       .slice(0, 6); // Show last 6 months
   };
 
@@ -164,10 +184,7 @@ export default function History() {
         <CardContent className="py-4">
           <div className="flex justify-between items-center">
             <div className="font-medium">
-              {period === 'daily' ? 
-                formatDate(record.date, 'M월 d일') :
-               period === 'weekly' ? record.period.replace('~', ' ~ ') :
-               `${record.period.slice(5)}월`}
+              {formatPeriod(record)}
             </div>
             <div className="flex gap-4">
               <div className="text-sm">
