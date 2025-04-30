@@ -5,7 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useGame } from "@/context/GameContext";
 import { useSleep } from "@/context/SleepContext";
 import { useAuth } from "@/context/AuthContext";
-import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, isValid, parseISO } from "date-fns";
+import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, isValid } from "date-fns";
 import { ko } from "date-fns/locale";
 
 export default function History() {
@@ -20,11 +20,23 @@ export default function History() {
 
   // Safe date parsing
   const parseDate = (dateString: string): Date | null => {
+    if (!dateString) return null;
     try {
       const date = new Date(dateString);
       return isValid(date) ? date : null;
     } catch {
       return null;
+    }
+  };
+
+  // Format date safely
+  const formatDate = (dateString: string, formatStr: string): string => {
+    const date = parseDate(dateString);
+    if (!date) return '날짜 오류';
+    try {
+      return format(date, formatStr);
+    } catch {
+      return '날짜 오류';
     }
   };
 
@@ -153,10 +165,7 @@ export default function History() {
           <div className="flex justify-between items-center">
             <div className="font-medium">
               {period === 'daily' ? 
-                (() => {
-                  const date = parseISO(record.date);
-                  return isValid(date) ? format(date, 'M월 d일') : '날짜 오류';
-                })() :
+                formatDate(record.date, 'M월 d일') :
                period === 'weekly' ? record.period.replace('~', ' ~ ') :
                `${record.period.slice(5)}월`}
             </div>
