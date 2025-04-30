@@ -110,9 +110,6 @@ export default function Dashboard() {
                 {/* Hexagon Chart */}
                 <div className="relative aspect-square w-full max-w-[300px] mx-auto">
                   <HexagonChart gameResults={getCognitiveData()} />
-                  <div className="absolute bottom-0 left-0 right-0 text-center text-sm text-muted-foreground">
-                    {getBaselineResults(user.id).length > 0 ? '최근 기록 기준' : '초기 측정 결과'}
-                  </div>
                 </div>
 
                 {/* Detailed Results */}

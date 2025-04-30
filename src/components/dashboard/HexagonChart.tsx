@@ -51,7 +51,17 @@ export function HexagonChart({ gameResults, className = "" }: HexagonChartProps)
       svg.appendChild(line);
       
       // Add labels
-      const labelOffset = 1.1; // Adjusted offset as requested
+      const getOffsetForGameType = (type: GameType) => {
+        switch (type) {
+          case 'WM':
+          case 'PS':
+            return 1.1; // 숫자기억, 정보처리
+          default:
+            return 1.2; // 반응속도, 패턴기억, 주의집중, 의사결정
+        }
+      };
+
+      const labelOffset = getOffsetForGameType(gameTypes[i]);
       const labelX = centerX + radius * labelOffset * Math.cos(angle);
       const labelY = centerY - radius * labelOffset * Math.sin(angle);
       
