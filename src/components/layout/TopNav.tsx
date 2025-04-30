@@ -1,4 +1,3 @@
-
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import Logo from "@/components/logo/Logo";
@@ -31,7 +30,7 @@ export function TopNav() {
               className="text-foreground hover:text-primary"
               onClick={() => navigate('/daily')}
             >
-              체크&게임
+              데일리체크
             </Button>
           </li>
           <li>

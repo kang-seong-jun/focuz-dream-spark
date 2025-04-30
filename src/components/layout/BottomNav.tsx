@@ -1,4 +1,3 @@
-
 import { useLocation, useNavigate } from 'react-router-dom';
 import { 
   Home, 
@@ -24,7 +23,7 @@ export function BottomNav() {
       icon: Home 
     },
     { 
-      name: "체크&게임", 
+      name: "데일리체크", 
       path: "/daily", 
       icon: PlayCircle
     },

@@ -33,7 +33,7 @@ export type GameType = 'WM' | 'RT' | 'ATT' | 'PS' | 'DM' | 'WM2';
 
 export const GAME_TYPES: Record<GameType, { name: string; fullName: string; description: string; primaryMetric?: string }> = {
   'WM': {
-    name: '숫자기억',
+    name: '숫자기억\n(준비중)',
     fullName: '숫자 기억',
     description: '화면에 나타나는 숫자를 순서대로 기억하세요',
     primaryMetric: 'memorySpan'
@@ -45,7 +45,7 @@ export const GAME_TYPES: Record<GameType, { name: string; fullName: string; desc
     primaryMetric: 'meanReactionTime'
   },
   'ATT': {
-    name: '주의집중',
+    name: '주의집중\n(준비중)',
     fullName: '주의력',
     description: 'X를 찾아라! X가 아닌 모든 글자에 반응하세요',
     primaryMetric: 'sustainedAttentionAccuracy'
@@ -57,7 +57,7 @@ export const GAME_TYPES: Record<GameType, { name: string; fullName: string; desc
     primaryMetric: 'correctResponses'
   },
   'DM': {
-    name: '의사결정',
+    name: '의사결정\n(준비중)',
     fullName: '판단력',
     description: '더 많은 쪽 고르기! 더 많은 양이 있는 쪽을 선택하세요',
     primaryMetric: 'decisionAccuracy'
