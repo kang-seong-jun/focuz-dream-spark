@@ -63,10 +63,10 @@ export const GAME_TYPES: Record<GameType, { name: string; fullName: string; desc
     primaryMetric: 'decisionAccuracy'
   },
   'WM2': {
-    name: '숫자기억2',
-    fullName: '숫자 기억2',
-    description: '화면에 나타나는 숫자를 순서대로 기억하세요',
-    primaryMetric: 'memorySpan'
+    name: '패턴기억',
+    fullName: '패턴 기억',
+    description: '화면에 나타나는 패턴을 기억하고 같은 순서로 재현하세요',
+    primaryMetric: 'patternSpan'
   }
 } as const;
 
