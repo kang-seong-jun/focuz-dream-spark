@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MainLayout } from "@/layouts/MainLayout";
 import { useAuth } from "@/context/AuthContext";
 import { useGame } from "@/context/GameContext";
+import { useSleep } from "@/context/SleepContext";
 import { HexagonChart } from "@/components/dashboard/HexagonChart";
 import { LatestSleepSummary } from "@/components/dashboard/LatestSleepSummary";
 import { GameResultsCards } from "@/components/dashboard/GameResultsCards";
@@ -14,6 +15,7 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const { user, isLoading } = useAuth();
   const { getBaselineResults, getLatestGameResult } = useGame();
+  const { getLatestSleepRecord } = useSleep();
   
   // Redirect to login if no user
   useEffect(() => {
@@ -26,6 +28,10 @@ export default function Dashboard() {
   if (isLoading || !user) {
     return <div>로딩 중...</div>;
   }
+
+  // Get latest sleep score
+  const latestSleepRecord = getLatestSleepRecord(user.id);
+  const sleepScore = latestSleepRecord?.calculatedSleepScore ?? '-';
 
   // Get user's performance data for hexagon chart
   const getCognitiveData = () => {
@@ -103,7 +109,12 @@ export default function Dashboard() {
           {/* Left column: Hexagon profile */}
           <Card className="md:col-span-2 bg-white/95 backdrop-blur-sm border-0">
             <CardHeader className="pb-2">
-              <CardTitle className="text-lg">나의 인지 능력 프로필</CardTitle>
+              <div className="space-y-2">
+                <div className="text-center md:text-left text-base text-muted-foreground">
+                  오늘의 수면 점수: <span className="font-bold text-primary">{sleepScore}</span>점
+                </div>
+                <CardTitle className="text-lg">나의 인지 능력 프로필</CardTitle>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
