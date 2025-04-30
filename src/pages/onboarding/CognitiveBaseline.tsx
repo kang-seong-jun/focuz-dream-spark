@@ -53,8 +53,13 @@ export default function CognitiveBaseline() {
 
   const handleNextGame = () => {
     if (currentGameIndex < gameOrder.length - 1) {
-      setCurrentGameIndex(currentGameIndex + 1);
-      setGameState('playing');
+      const nextIndex = currentGameIndex + 1;
+      console.log('Moving to next game:', gameOrder[nextIndex]);
+      setCurrentGameIndex(nextIndex);
+      // 상태 업데이트 후 약간의 지연을 두고 게임 상태 변경
+      setTimeout(() => {
+        setGameState('playing');
+      }, 100);
     } else {
       setGameState('complete');
     }
@@ -66,18 +71,28 @@ export default function CognitiveBaseline() {
     switch (gameType) {
       case 'RT': {
         const reactionTime = metrics.averageReactionTime || 1000;
-        return Math.max(0, Math.min(100, 100 - ((reactionTime - 150) / 850) * 100));
+        // 반응속도 점수를 정수로 반환
+        return Math.round(Math.max(0, Math.min(100, 100 - ((reactionTime - 150) / 850) * 100)));
       }
       case 'PS': {
         const correct = metrics.correctResponses ?? 0;
         const avgSpeed = metrics.timePerResponse ?? 1000;
-        let score = 0;
-        if (avgSpeed >= 1000) {
-          score = correct * 2;
-        } else {
-          score = correct * 2 + (100 - avgSpeed / 10);
+        const accuracy = metrics.accuracy ?? 0;
+        
+        // 정보처리속도 점수 계산 개선
+        // 1. 맞춘 개수 기반 기본 점수 (최대 60점)
+        let baseScore = (correct / 20) * 60;  // 20개 맞추면 60점
+        
+        // 2. 반응 속도 보너스 (최대 20점)
+        let speedBonus = 0;
+        if (avgSpeed < 1000) {
+          speedBonus = Math.round((1000 - avgSpeed) / 1000 * 20);
         }
-        return Math.max(0, Math.round(score));
+        
+        // 3. 정확도 보너스 (최대 20점)
+        let accuracyBonus = Math.round(accuracy * 20);
+        
+        return Math.min(100, Math.round(baseScore + speedBonus + accuracyBonus));
       }
       case 'WM2': {
         const memorySpan = metrics.workingMemorySpan || 0;
@@ -195,10 +210,14 @@ export default function CognitiveBaseline() {
     );
   };
   
-  // 게임 시작 타이밍을 useEffect로 통일
+  // 게임 시작 로직 개선
   useEffect(() => {
     if (gameState === 'playing') {
-      startGame(currentGame);
+      console.log('Starting game:', currentGame);
+      // 이전 게임 상태 초기화를 위한 짧은 지연
+      setTimeout(() => {
+        startGame(currentGame);
+      }, 100);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameState, currentGame]);
