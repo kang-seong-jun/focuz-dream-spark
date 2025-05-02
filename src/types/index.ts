@@ -65,8 +65,8 @@ export const GAME_TYPES: Record<GameType, { name: string; fullName: string; desc
   'WM2': {
     name: '패턴기억',
     fullName: '패턴 기억',
-    description: '화면에 나타나는 패턴을 기억하고 같은 순서로 재현하세요. 1라운드(4×4): 4개(20점), 2라운드(5×5): 6개(30점), 3라운드(6×6): 8개(40점) + 반응속도(10점)',
-    primaryMetric: 'patternScore'
+    description: '화면에 나타나는 패턴을 기억하고 같은 순서로 재현하세요',
+    primaryMetric: 'patternSpan'
   }
 } as const;
 
