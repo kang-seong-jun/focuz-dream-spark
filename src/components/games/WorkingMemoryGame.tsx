@@ -8,6 +8,13 @@ interface WorkingMemoryGameProps {
   isBaseline?: boolean;
 }
 
+// 라운드별 격자 크기와 패턴 수를 상수로 선언
+const ROUND_SETTINGS = [
+  { gridSize: 4, patternLength: 4, showTime: 800 },   // 1라운드
+  { gridSize: 5, patternLength: 6, showTime: 1000 }, // 2라운드
+  { gridSize: 6, patternLength: 8, showTime: 1200 }, // 3라운드
+];
+
 export function WorkingMemoryGame({ onComplete, isBaseline = false }: WorkingMemoryGameProps) {
   // Game state
   const [gameState, setGameState] = useState<'instruction' | 'playing' | 'waitingForNext' | 'finished'>('instruction');
@@ -24,13 +31,13 @@ export function WorkingMemoryGame({ onComplete, isBaseline = false }: WorkingMem
   const [incorrectSelections, setIncorrectSelections] = useState(0);
   
   // Game settings based on round
-  const [gridSize, setGridSize] = useState(4); // 4x4 grid for first round
-  const [patternLength, setPatternLength] = useState(4); // 4 cells for first round
+  const [gridSize, setGridSize] = useState(ROUND_SETTINGS[0].gridSize);
+  const [patternLength, setPatternLength] = useState(ROUND_SETTINGS[0].patternLength);
   const [responseStartTime, setResponseStartTime] = useState<number | null>(null);
   
   // Game settings
   const MAX_ROUNDS = 3;
-  const PATTERN_SHOW_TIME = 1000; // ms
+  const SPEED_BONUS_THRESHOLD = 1000; // 1 second per pattern for speed bonus
   
   // Refs for timers
   const timerRef = useRef<number | null>(null);
@@ -41,56 +48,42 @@ export function WorkingMemoryGame({ onComplete, isBaseline = false }: WorkingMem
     setGameState('playing');
     setScore(0);
     setRound(0);
-    setGridSize(4);
-    setPatternLength(4); // 1라운드: 4개
+    setGridSize(ROUND_SETTINGS[0].gridSize);
+    setPatternLength(ROUND_SETTINGS[0].patternLength);
     setPatternCompleted(false);
-    generatePattern();
+    generatePattern(0);
   };
   
   // Generate a new pattern for the current round
-  const generatePattern = () => {
-    // Clear any existing pattern and selections
+  const generatePattern = (roundIndex = round) => {
     setPattern([]);
     setSelectedCells([]);
     setCorrectSelections(0);
     setIncorrectSelections(0);
-    
-    // Generate a random pattern
+
+    const { gridSize, patternLength } = ROUND_SETTINGS[roundIndex];
     const totalCells = gridSize * gridSize;
     const newPattern: number[] = [];
-    
-    // Create an array of all cell indices
     const availableCells = Array.from({ length: totalCells }, (_, i) => i);
-    
-    // Randomly select cells for the pattern
     for (let i = 0; i < patternLength; i++) {
       if (availableCells.length === 0) break;
-      
-      // Random index from available cells
       const randomIndex = Math.floor(Math.random() * availableCells.length);
-      // Remove and get the cell
       const cell = availableCells.splice(randomIndex, 1)[0];
       newPattern.push(cell);
     }
-    
     setPattern(newPattern);
-    showPattern(newPattern);
+    showPattern(roundIndex, newPattern);
   };
   
   // Show the pattern to the player
-  const showPattern = (patternToShow: number[]) => {
-    // Clear existing timer
+  const showPattern = (roundIndex: number, patternToShow: number[]) => {
     if (timerRef.current) {
       clearTimeout(timerRef.current);
     }
-    
-    // Show the pattern
     setIsShowingPattern(true);
-    
-    // Hide the pattern after patternShowTime
     timerRef.current = window.setTimeout(() => {
       setIsShowingPattern(false);
-    }, PATTERN_SHOW_TIME);
+    }, ROUND_SETTINGS[roundIndex].showTime);
   };
   
   // Handle cell click
@@ -133,21 +126,18 @@ export function WorkingMemoryGame({ onComplete, isBaseline = false }: WorkingMem
   
   // Calculate score for a single round
   const calculateRoundScore = (roundIndex: number, correctCount: number, startTime: number | null) => {
-    // Base score per correct cell (5 points each)
+    // Base score: 5 points per correct pattern
     const baseScore = correctCount * 5;
     
-    // Speed bonus (up to 10 points)
+    // Speed bonus calculation (up to 10 points total across all rounds)
     let speedBonus = 0;
     if (startTime !== null) {
       const responseTime = Date.now() - startTime;
-      const maxTime = patternLength * 1000; // 1 second per cell
-      const minTime = patternLength * 500;  // 0.5 second per cell
+      const maxTime = patternLength * SPEED_BONUS_THRESHOLD; // 1 second per pattern
       
-      if (responseTime <= minTime) {
-        speedBonus = 10; // Maximum bonus
-      } else if (responseTime < maxTime) {
-        // Linear scale from 10 to 0 points
-        speedBonus = Math.round((maxTime - responseTime) / (maxTime - minTime) * 10);
+      if (responseTime <= maxTime) {
+        // Calculate speed bonus based on response time
+        speedBonus = Math.round((maxTime - responseTime) / maxTime * (10 / MAX_ROUNDS));
       }
     }
     
@@ -157,23 +147,13 @@ export function WorkingMemoryGame({ onComplete, isBaseline = false }: WorkingMem
   // Handle proceeding to next round
   const handleNextRound = () => {
     const nextRound = round + 1;
+    setGridSize(ROUND_SETTINGS[nextRound].gridSize);
+    setPatternLength(ROUND_SETTINGS[nextRound].patternLength);
     setRound(nextRound);
-    
-    // Update grid size and pattern length based on round
-    if (nextRound === 1) {
-      // Round 2: 5x5 grid, 6 cells
-      setGridSize(5);
-      setPatternLength(6);
-    } else if (nextRound === 2) {
-      // Round 3: 6x6 grid, 8 cells
-      setGridSize(6);
-      setPatternLength(8);
-    }
-    
     setGameState('playing');
     setPatternCompleted(false);
     setResponseStartTime(null);
-    generatePattern();
+    generatePattern(nextRound);
   };
   
   // Finish the game
@@ -188,14 +168,13 @@ export function WorkingMemoryGame({ onComplete, isBaseline = false }: WorkingMem
     
     setGameState('finished');
     
-    // Calculate metrics
+    // Calculate final metrics
     const totalSelections = correctSelections + incorrectSelections;
     const accuracy = totalSelections > 0 ? correctSelections / totalSelections : 0;
     
     const metrics = {
-      workingMemorySpan: patternLength,
+      patternScore: score,
       accuracy,
-      score,
       totalRounds: round + 1,
       correctSelections,
       incorrectSelections,
@@ -228,13 +207,13 @@ export function WorkingMemoryGame({ onComplete, isBaseline = false }: WorkingMem
     }
   }, [round, patternCompleted]);
   
-  // useEffect로 gridSize, patternLength, gameState가 바뀔 때 패턴 생성
+  // useEffect로 gridSize, patternLength, gameState가 바뀔 때 패턴 생성 → round만 의존하도록 변경
   useEffect(() => {
     if (gameState === 'playing' && !isShowingPattern && !patternCompleted) {
-      generatePattern();
+      generatePattern(round);
     }
     // eslint-disable-next-line
-  }, [gridSize, patternLength, gameState]);
+  }, [round, gameState]);
   
   // Generate grid cells
   const renderGrid = () => {
