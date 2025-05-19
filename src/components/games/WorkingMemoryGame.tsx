@@ -15,6 +15,12 @@ const ROUND_SETTINGS = [
   { gridSize: 6, patternLength: 8, showTime: 1200 }, // 3라운드
 ];
 
+// 점수 계산 관련 상수 추가
+const TOTAL_PATTERNS = 18; // 4+6+8
+const MAX_SCORE = 100;
+const ACCURACY_SCORE = 90; // 맞춘 개수 * 5점
+const SPEED_BONUS = 10; // 소요시간 보너스 최대치
+
 export function WorkingMemoryGame({ onComplete, isBaseline = false }: WorkingMemoryGameProps) {
   // Game state
   const [gameState, setGameState] = useState<'instruction' | 'playing' | 'waitingForNext' | 'finished'>('instruction');
@@ -42,6 +48,10 @@ export function WorkingMemoryGame({ onComplete, isBaseline = false }: WorkingMem
   // Refs for timers
   const timerRef = useRef<number | null>(null);
   const gameCompleted = useRef<boolean>(false);
+  
+  // 점수 누적용 state 추가
+  const [totalCorrect, setTotalCorrect] = useState(0);
+  const [totalSpeedBonus, setTotalSpeedBonus] = useState(0);
   
   // Initialize or reset game
   const startGame = () => {
@@ -112,14 +122,13 @@ export function WorkingMemoryGame({ onComplete, isBaseline = false }: WorkingMem
     
     // Check if we've selected enough cells
     if (selectedCells.length + 1 >= patternLength) {
-      // Pattern completed
       setPatternCompleted(true);
-      
-      // Calculate score for this round
-      const roundScore = calculateRoundScore(round, correctSelections + (isCorrect ? 1 : 0), responseStartTime);
-      setScore(prev => prev + roundScore);
-      
-      // Wait for user to proceed to next round
+      // 라운드별 맞춘 개수 계산
+      const roundCorrect = correctSelections + (isCorrect ? 1 : 0);
+      setTotalCorrect(prev => prev + roundCorrect);
+      // 라운드별 속도 보너스 계산
+      const roundSpeedBonus = calculateSpeedBonus(round, responseStartTime);
+      setTotalSpeedBonus(prev => prev + roundSpeedBonus);
       setGameState('waitingForNext');
     }
   };
@@ -158,29 +167,21 @@ export function WorkingMemoryGame({ onComplete, isBaseline = false }: WorkingMem
   
   // Finish the game
   const finishGame = () => {
-    // Prevent multiple completions
     if (gameCompleted.current) return;
     gameCompleted.current = true;
-
-    if (timerRef.current) {
-      clearTimeout(timerRef.current);
-    }
-    
+    if (timerRef.current) clearTimeout(timerRef.current);
     setGameState('finished');
-    
-    // Calculate final metrics
+    const totalScore = Math.min(MAX_SCORE, totalCorrect * 5 + totalSpeedBonus);
     const totalSelections = correctSelections + incorrectSelections;
     const accuracy = totalSelections > 0 ? correctSelections / totalSelections : 0;
-    
     const metrics = {
-      patternScore: score,
+      score: totalScore,
       accuracy,
       totalRounds: round + 1,
-      correctSelections,
+      correctSelections: totalCorrect,
       incorrectSelections,
+      maxScore: MAX_SCORE
     };
-    
-    // Send results after a delay to avoid setState during render
     setTimeout(() => {
       onComplete(metrics);
     }, 300);
@@ -266,6 +267,20 @@ export function WorkingMemoryGame({ onComplete, isBaseline = false }: WorkingMem
     });
   };
   
+  // 속도 보너스 계산 함수 분리
+  const calculateSpeedBonus = (roundIndex: number, startTime: number | null) => {
+    if (startTime === null) return 0;
+    const patternLength = ROUND_SETTINGS[roundIndex].patternLength;
+    const maxTime = patternLength * SPEED_BONUS_THRESHOLD;
+    const responseTime = Date.now() - startTime;
+    if (responseTime <= maxTime) {
+      // 라운드별 속도 보너스: 전체 10점 중 라운드별 비율로 분배
+      const roundBonus = Math.round((maxTime - responseTime) / maxTime * (SPEED_BONUS / MAX_ROUNDS));
+      return roundBonus;
+    }
+    return 0;
+  };
+  
   return (
     <Card className="w-full max-w-md mx-auto bg-white/95 backdrop-blur-sm shadow-lg border-0">
       <CardHeader className="border-b pb-3">
@@ -339,8 +354,9 @@ export function WorkingMemoryGame({ onComplete, isBaseline = false }: WorkingMem
         {gameState === 'finished' && (
           <div className="text-center space-y-4">
             <h3 className="text-xl font-semibold">게임 완료!</h3>
-            <p>최종 점수: {score}</p>
-            <p>계산 중...</p>
+            <p>최종 점수: {Math.min(MAX_SCORE, totalCorrect * 5 + totalSpeedBonus)} / 100점</p>
+            <p>정확도 점수: {totalCorrect * 5} / 90점</p>
+            <p>속도 보너스: {totalSpeedBonus} / 10점</p>
           </div>
         )}
 

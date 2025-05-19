@@ -1,4 +1,3 @@
-
 import { Card, CardContent } from "@/components/ui/card";
 import { useAuth } from "@/context/AuthContext";
 import { useGame } from "@/context/GameContext";
@@ -41,9 +40,9 @@ export function GameResultsCards() {
     if (!wmResult) {
       const baselineResult = getBaselineResults(user.id).find(r => r.gameType === 'WM2');
       if (!baselineResult) return "아직 측정되지 않음";
-      return `점수: ${baselineResult.metrics.score} (최대 패턴: ${baselineResult.metrics.workingMemorySpan})`;
+      return `점수: ${baselineResult.metrics.score} / 100점 (최대 패턴: ${baselineResult.metrics.workingMemorySpan})`;
     }
-    return `점수: ${wmResult.metrics.score} (최대 패턴: ${wmResult.metrics.workingMemorySpan})`;
+    return `점수: ${wmResult.metrics.score} / 100점 (최대 패턴: ${wmResult.metrics.workingMemorySpan})`;
   };
 
   return (
