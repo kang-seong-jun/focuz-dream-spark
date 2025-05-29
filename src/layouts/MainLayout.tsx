@@ -10,7 +10,7 @@ interface MainLayoutProps {
 
 export function MainLayout({ children, withNavigation = true }: MainLayoutProps) {
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-focus-lightPurple via-white to-focus-gray">
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-wellness-yellow-50 via-white to-wellness-blue-50">
       {withNavigation && <TopNav />}
       
       <main className="flex-1 max-w-6xl w-full mx-auto p-4 md:p-6 pb-20 md:pb-6">

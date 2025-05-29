@@ -1,3 +1,4 @@
+
 import { Card, CardContent } from "@/components/ui/card";
 import { useAuth } from "@/context/AuthContext";
 import { useGame } from "@/context/GameContext";
@@ -47,38 +48,38 @@ export function GameResultsCards() {
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-4">
-      <Card className="bg-white/95 backdrop-blur-sm border-0">
+      <Card className="bg-gradient-to-br from-wellness-yellow-100 to-wellness-yellow-50 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
         <CardContent className="flex items-center p-4">
-          <div className="bg-focus-blue/10 rounded-full p-2 mr-3">
-            <Clock className="h-5 w-5 text-focus-blue" />
+          <div className="bg-wellness-yellow-500/20 rounded-full p-2 mr-3">
+            <Clock className="h-5 w-5 text-wellness-yellow-700" />
           </div>
           <div>
-            <h3 className="font-medium text-sm">{GAME_TYPES.RT.name}</h3>
-            <p className="text-sm text-muted-foreground">{formatRT()}</p>
+            <h3 className="font-medium text-sm text-wellness-yellow-800">{GAME_TYPES.RT.name}</h3>
+            <p className="text-sm text-wellness-yellow-700">{formatRT()}</p>
           </div>
         </CardContent>
       </Card>
       
-      <Card className="bg-white/95 backdrop-blur-sm border-0">
+      <Card className="bg-gradient-to-br from-wellness-blue-100 to-wellness-blue-50 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
         <CardContent className="flex items-center p-4">
-          <div className="bg-focus-purple/10 rounded-full p-2 mr-3">
-            <Check className="h-5 w-5 text-focus-purple" />
+          <div className="bg-wellness-blue-500/20 rounded-full p-2 mr-3">
+            <Check className="h-5 w-5 text-wellness-blue-700" />
           </div>
           <div>
-            <h3 className="font-medium text-sm">{GAME_TYPES.PS.name}</h3>
-            <p className="text-sm text-muted-foreground">{formatPS()}</p>
+            <h3 className="font-medium text-sm text-wellness-blue-800">{GAME_TYPES.PS.name}</h3>
+            <p className="text-sm text-wellness-blue-700">{formatPS()}</p>
           </div>
         </CardContent>
       </Card>
       
-      <Card className="bg-white/95 backdrop-blur-sm border-0">
+      <Card className="bg-gradient-to-br from-wellness-light-200 to-wellness-light-100 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
         <CardContent className="flex items-center p-4">
-          <div className="bg-focus-blue/10 rounded-full p-2 mr-3">
-            <Award className="h-5 w-5 text-focus-blue" />
+          <div className="bg-wellness-blue-500/20 rounded-full p-2 mr-3">
+            <Award className="h-5 w-5 text-wellness-blue-700" />
           </div>
           <div>
-            <h3 className="font-medium text-sm">{GAME_TYPES.WM2.name}</h3>
-            <p className="text-sm text-muted-foreground">{formatWM()}</p>
+            <h3 className="font-medium text-sm text-wellness-blue-800">{GAME_TYPES.WM2.name}</h3>
+            <p className="text-sm text-wellness-blue-700">{formatWM()}</p>
           </div>
         </CardContent>
       </Card>

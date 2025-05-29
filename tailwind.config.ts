@@ -53,13 +53,44 @@ export default {
 					DEFAULT: 'hsl(var(--card))',
 					foreground: 'hsl(var(--card-foreground))'
 				},
-				focus: {
-					blue: '#5271FF',
-					purple: '#9B87F5',
-					lightPurple: '#E5DEFF',
-					darkPurple: '#7E69AB',
-					gray: '#F1F0FB',
-					darkGray: '#8E9196',
+				// New palette colors inspired by the reference
+				wellness: {
+					yellow: {
+						50: '#FFFEF5',
+						100: '#FFFACC',
+						200: '#FFF799',
+						300: '#FFEF66',
+						400: '#FFE533',
+						500: '#FFDB00', // Main yellow
+						600: '#E6C500',
+						700: '#CCAF00',
+						800: '#B39900',
+						900: '#998300',
+					},
+					blue: {
+						50: '#F0F4FF',
+						100: '#D6E4FF',
+						200: '#B8CFFF',
+						300: '#8FB5FF',
+						400: '#5A8FFF',
+						500: '#2D5FC8', // Main blue
+						600: '#1E47B8',
+						700: '#1A3BA3',
+						800: '#16318F',
+						900: '#12287A',
+					},
+					light: {
+						50: '#FEFDF8',
+						100: '#FDF9E6',
+						200: '#FBF2CC',
+						300: '#F8E8B3',
+						400: '#F5DE99',
+						500: '#F2D480', // Light yellow
+						600: '#E8C066',
+						700: '#DEAC4D',
+						800: '#D49833',
+						900: '#CA851A',
+					}
 				},
 				sidebar: {
 					DEFAULT: 'hsl(var(--sidebar-background))',
