@@ -4,9 +4,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface WorkingMemoryGameProps {
   onComplete: (metrics: Record<string, any>) => void;
+  isBaseline?: boolean;
 }
 
-export function WorkingMemoryGame({ onComplete }: WorkingMemoryGameProps) {
+export function WorkingMemoryGame({ onComplete, isBaseline = false }: WorkingMemoryGameProps) {
   const [gamePhase, setGamePhase] = useState<'instruction' | 'playing' | 'waitingForNext' | 'finished'>('instruction');
   const [sequence, setSequence] = useState<number[]>([]);
   const [userSequence, setUserSequence] = useState<number[]>([]);
@@ -122,10 +123,10 @@ export function WorkingMemoryGame({ onComplete }: WorkingMemoryGameProps) {
             className={`
               w-20 h-20 rounded-xl border-2 cursor-pointer transition-all duration-200 transform
               ${activeCell === index 
-                ? 'bg-gradient-to-br from-yellow-400 to-yellow-500 border-yellow-600 scale-105 shadow-lg' 
-                : 'bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 hover:from-blue-100 hover:to-blue-200 hover:border-blue-300 hover:scale-105'
+                ? 'bg-gradient-to-br from-neon-yellow to-electric-orange border-electric-orange scale-105 shadow-lg shadow-neon-yellow/50' 
+                : 'bg-gradient-to-br from-electric-blue/10 to-neon-purple/10 border-electric-blue/30 hover:from-electric-blue/20 hover:to-neon-purple/20 hover:border-electric-blue hover:scale-105'
               }
-              ${!showingSequence && gamePhase === 'playing' ? 'hover:shadow-md' : ''}
+              ${!showingSequence && gamePhase === 'playing' ? 'hover:shadow-md hover:shadow-electric-blue/30' : ''}
             `}
             onClick={() => handleCellClick(index)}
           />
@@ -135,13 +136,13 @@ export function WorkingMemoryGame({ onComplete }: WorkingMemoryGameProps) {
   };
 
   return (
-    <Card className="w-full max-w-md mx-auto bg-gradient-to-br from-white to-blue-50/50 backdrop-blur-sm border-0 shadow-xl">
+    <Card className="w-full max-w-md mx-auto bg-white/90 backdrop-blur-lg border-0 shadow-2xl shadow-electric-blue/20">
       <CardHeader className="text-center pb-4">
-        <CardTitle className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+        <CardTitle className="text-xl font-bold bg-gradient-to-r from-electric-blue to-neon-purple bg-clip-text text-transparent">
           패턴 기억하기
         </CardTitle>
         {gamePhase !== 'instruction' && (
-          <div className="flex justify-between text-sm font-medium text-blue-700">
+          <div className="flex justify-between text-sm font-medium text-electric-blue">
             <span>라운드: {round}/{totalRounds}</span>
             <span>레벨: {currentLevel}</span>
             <span>점수: {score}</span>
@@ -152,13 +153,13 @@ export function WorkingMemoryGame({ onComplete }: WorkingMemoryGameProps) {
       <CardContent className="text-center space-y-4">
         {gamePhase === 'instruction' && (
           <div className="space-y-4">
-            <p className="text-blue-700 leading-relaxed">
+            <p className="text-electric-blue leading-relaxed font-medium">
               노란색으로 빛나는 순서를 기억하고<br />
               같은 순서로 칸을 눌러주세요
             </p>
             <Button 
               onClick={startGame}
-              className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-semibold px-8 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+              className="bg-gradient-to-r from-electric-blue to-neon-purple hover:from-neon-blue hover:to-electric-purple text-white font-semibold px-8 py-3 rounded-xl shadow-lg hover:shadow-xl hover:shadow-electric-blue/30 transition-all duration-300 transform hover:scale-105"
             >
               게임 시작
             </Button>
@@ -168,12 +169,12 @@ export function WorkingMemoryGame({ onComplete }: WorkingMemoryGameProps) {
         {(gamePhase === 'playing' || gamePhase === 'waitingForNext') && (
           <div className="space-y-4">
             {showingSequence && (
-              <div className="text-yellow-600 font-semibold text-lg animate-pulse">
+              <div className="text-neon-yellow font-bold text-lg animate-pulse drop-shadow-lg">
                 패턴을 기억하세요...
               </div>
             )}
             {!showingSequence && gamePhase === 'playing' && (
-              <div className="text-blue-600 font-semibold text-lg">
+              <div className="text-electric-blue font-bold text-lg drop-shadow-lg">
                 순서대로 눌러주세요 ({userSequence.length}/{sequence.length})
               </div>
             )}
@@ -183,13 +184,13 @@ export function WorkingMemoryGame({ onComplete }: WorkingMemoryGameProps) {
             {gamePhase === 'waitingForNext' && (
               <div className="space-y-4">
                 {consecutiveFailures > 0 ? (
-                  <div className="text-red-500 font-medium">틀렸습니다!</div>
+                  <div className="text-electric-pink font-bold text-lg drop-shadow-lg">틀렸습니다!</div>
                 ) : (
-                  <div className="text-green-500 font-medium">정답입니다!</div>
+                  <div className="text-neon-green font-bold text-lg drop-shadow-lg">정답입니다!</div>
                 )}
                 <Button 
                   onClick={nextRound}
-                  className="bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600 text-white font-semibold px-6 py-2 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+                  className="bg-gradient-to-r from-neon-green to-electric-cyan hover:from-electric-cyan hover:to-neon-blue text-white font-semibold px-6 py-2 rounded-xl shadow-lg hover:shadow-xl hover:shadow-neon-green/30 transition-all duration-300 transform hover:scale-105"
                 >
                   다음 라운드
                 </Button>
